@@ -152,12 +152,10 @@ mesmo tom lê-se como erro do sistema, não como "o usuário desligou isto". O
 desenho é `md-sleep` e não `md-pause` porque o widget de mídia do próprio shell
 já usa o de pausa para outra coisa.
 
-**Isto vai para o save**, ao contrário do turbo e da demonstração. Os dois
-rápidos se desligam sozinhos porque deixados ligados queimam a planta sem
-ninguém ver; a parada é o oposto — não gasta nada e não perde nada, e quem
-desligou o relógio quer encontrá-lo desligado amanhã. Ligar qualquer um dos dois
-ritmos rápidos retoma primeiro, porque um ritmo de 130000x atrás de um relógio
-parado não teria efeito nenhum e a leitura óbvia disso é que o turbo quebrou.
+**Isto vai para o save**, como todo o resto que você mexe aqui: quem desligou o
+relógio quer encontrá-lo desligado amanhã. Ligar qualquer um dos dois ritmos
+rápidos retoma primeiro, porque um ritmo de 130000x atrás de um relógio parado
+não teria efeito nenhum e a leitura óbvia disso é que o turbo quebrou.
 
 O tempo aqui já é de sessão e não de parede (máquina desligada, planta parada),
 então parar não tem preço nenhum a pagar depois: a planta não acorda com sede
@@ -210,7 +208,11 @@ Nos quatro primeiros a sala é uma camada sobre a tela e clicar fora fecha. No
 lado a lado com o que você está fazendo, em vez de abrir e fechar.
 
 O modo escolhido vai para o save — preferência que volta ao padrão a cada boot
-não é preferência.
+não é preferência. Isso vale para tudo o que você mexe aqui: idioma, cores,
+tamanho de janela, automático, parada e turbo. As duas exceções são a
+demonstração (que não pode, ver abaixo) e a aba de colheitas, que não é ajuste e
+sim onde você estava olhando — a planta é o motivo da janela existir, então abrir
+a sala mostra a planta.
 
 Nos tamanhos menores a sala corta o que é leitura e mantém o que é
 acompanhamento: primeiro sai o painel do strain, depois as linhas de medidor que
@@ -228,6 +230,8 @@ teclas, e as duas são liga/desliga:
 | escreve no save | nunca | sim |
 | as colheitas contam | não | sim |
 | ao desligar | a planta volta onde estava | fica onde chegou |
+| fica salvo | não, e não pode | **sim** |
+| sobrevive a fechar a sala | não | **sim** |
 | cor no cabeçalho | âmbar | vermelho |
 
 A demonstração é o que se grava para mostrar o plugin a alguém: do broto à
@@ -237,10 +241,23 @@ replanta em loop — uma espécie de protetor de tela.
 O turbo é para quando você quer chegar lá. É o TUI inteiro: o mesmo ritmo, as
 mesmas consequências.
 
-Os dois **desligam sozinhos quando a sala fecha**, e nenhum dos dois vai para o
-save. Um ritmo que queima um ciclo por minuto é coisa que se faz olhando; se
-sobrevivesse à janela fechada ou ao reinício do shell, a planta iria embora sem
-ninguém ver — e o tempo acumulado é o único bem que ela tem.
+**A demonstração desliga sozinha quando a sala fecha; o turbo não.**
+
+A demonstração simula sobre uma cópia: atrás de uma janela fechada ela gastaria
+CPU para animar uma planta que ninguém vê e que vai ser jogada fora de qualquer
+forma. E ela não pode ser salva, pela própria definição — gravar "nada disto
+conta" seria gravar a intenção de simular um descartável no próximo boot.
+
+O turbo fica, e vai para o save. Isto foi decidido ao contrário primeiro, com o
+argumento de que um ritmo que queima um ciclo por minuto é coisa que se faz
+olhando. O argumento estava certo sobre o risco e errado sobre de quem é a
+escolha: quem roda em turbo por padrão tinha que religar em toda sessão, e um
+ajuste que volta ao padrão sozinho não é ajuste, é uma pergunta repetida.
+
+O risco continua avisado — cabeçalho vermelho com `·· TURBO 130000x ··` sempre
+que está ligado — e agora está documentado em vez de impedido: com a sala
+fechada, o turbo colhe a planta mais ou menos a cada minuto, então o histórico
+de 100 colheitas roda inteiro em menos de duas horas.
 
 ---
 

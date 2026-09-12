@@ -137,10 +137,19 @@ Singleton {
   // Turbo: a planta DE VERDADE rodando no fator do TUI. Escreve no save, as
   // colheitas contam, e o que acontecer aqui aconteceu.
   //
-  // Nao vai para o save de proposito, e desliga sozinho quando o overlay fecha.
-  // Um ritmo que queima um ciclo por minuto e uma coisa que se faz olhando; se
-  // sobrevivesse ao fechar a janela ou ao reiniciar o shell, a planta iria
-  // embora enquanto ninguem via, e o unico bem dela e o tempo acumulado.
+  // **Vai para o save, e sobrevive a fechar a sala e a reiniciar o shell.**
+  //
+  // Isto foi decidido ao contrario primeiro, e o argumento de la era: um ritmo
+  // que queima um ciclo por minuto e coisa que se faz olhando, e se sobrevivesse
+  // a janela fechada a planta iria embora sem ninguem ver. O argumento estava
+  // certo sobre o risco e errado sobre de quem e a escolha. Quem roda em turbo
+  // por padrao - e e o caso do autor - tinha que religar em toda sessao, e um
+  // ajuste que volta ao padrao sozinho nao e ajuste, e uma pergunta repetida.
+  //
+  // O risco continua existindo e continua avisado: cabecalho vermelho com
+  // "·· TURBO 130000x ··" sempre que esta ligado. E o que ele custa esta
+  // documentado no README: com a sala fechada, uma colheita por minuto, e o
+  // historico (que guarda 100) roda inteiro em uma hora e quarenta.
   property bool turbo: false
 
   function toggleTurbo() {
@@ -149,7 +158,7 @@ Singleton {
     if (!root.turbo && root.paused) root.setPaused(false)
     root.turbo = !root.turbo
     root.lastTickMs = Date.now()   // sem isto o primeiro passo cobre o intervalo inteiro
-    if (!root.turbo) root.save()
+    root.save()                    // nos dois sentidos: e preferencia agora
     return root.turbo
   }
 
@@ -652,6 +661,11 @@ Singleton {
       auto_care: root.autoCare,
       window_mode: root.windowMode,
       language: root.lang,
+      // O turbo e preferencia como qualquer outra. A demonstracao (`fast`) nao
+      // esta aqui e nao pode estar: ela e definida como "nada disto conta" e
+      // roda sobre uma copia que o desligar joga fora - gravar seria gravar a
+      // intencao de simular um descartavel no proximo boot.
+      turbo: root.turbo,
       // `paused` fica de fora do que o TUI entende de proposito: la o relogio e
       // de parede e nao existe "parado". Levar o save para o TUI com a planta
       // parada nao a deixa parada - o TUI vai andar, como sempre andou.
@@ -668,6 +682,9 @@ Singleton {
     root.autoCare = data.auto_care === true
     root.windowMode = root.canonWindowMode(data.window_mode) || "full"
     root.paused = data.paused === true
+    // Parada manda: os dois nunca sao verdade ao mesmo tempo (`setPaused`
+    // desliga o turbo), e um save costurado a mao poderia dizer que sao.
+    root.turbo = data.turbo === true && !root.paused
     // Save sem idioma e save de antes desta opcao existir (ou vindo do TUI):
     // fica o que o locale pediu, que e o default do proprio `lang`.
     if (I18n.known(data.language)) root.lang = data.language

@@ -171,6 +171,34 @@ Daí o default de uma semana: tempo suficiente para que abrir a barra na
 quarta-feira mostre uma planta diferente da de segunda. Água e nutrientes
 existem para dar consequência ao abandono, não para virar tarefa diária.
 
+### 4c. O turbo é preferência, e fica salvo — decidido em 12/09/2026
+
+Esta seção revisa o que está escrito abaixo: que o turbo não vai para o save e
+se desliga ao fechar a sala.
+
+O argumento de lá — um ritmo que queima um ciclo por minuto é coisa que se faz
+olhando, e se sobrevivesse à janela fechada a planta iria embora sem ninguém ver
+— estava certo sobre o risco e **errado sobre de quem é a escolha**. Quem roda
+em turbo por padrão tinha que religar em toda sessão, e um ajuste que volta ao
+padrão sozinho não é ajuste: é uma pergunta repetida.
+
+Então: `turbo` vai para o save, sobrevive a fechar a sala e a reiniciar o shell,
+e `paused` manda sobre ele (os dois nunca são verdade ao mesmo tempo). O risco
+continua avisado em vermelho no cabeçalho e passou a estar **documentado em vez
+de impedido**: com a sala fechada, o turbo colhe mais ou menos a cada minuto, e
+o histórico de 100 colheitas roda inteiro em menos de duas horas.
+
+A demonstração (`f`) continua fora do save, e não por precaução: ela é definida
+como "nada disto conta" e roda sobre uma cópia que o desligar joga fora. Gravar
+seria gravar a intenção de simular um descartável no próximo boot, que não é
+estado que alguém possa restaurar.
+
+A regra geral que sai daqui, e que vale para o resto: **tudo o que o usuário
+muda fica salvo.** Idioma, cores, tamanho de janela, automático, parada, turbo.
+As exceções precisam de um motivo que não seja "é arriscado" — a demonstração
+tem (não é estado), e a aba de colheitas tem (não é ajuste, é onde a pessoa
+estava olhando, e a planta é o motivo da janela existir).
+
 **E o 130000x não some — vira botão.** Segurar `f` no overlay roda no fator
 original e a planta cresce na sua frente, do broto à colheita, em 60 segundos.
 É o modo demonstração, e é o que se grava para mostrar o plugin aos outros.

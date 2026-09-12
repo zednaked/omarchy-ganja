@@ -135,12 +135,10 @@ system error rather than as "the user turned this off". The glyph is `md-sleep`
 and not `md-pause` because the shell's own media widget already uses the pause
 glyph to mean something else in the same bar.
 
-**This is persisted**, unlike turbo and demo. Those two turn themselves off,
-because left running they burn through the plant with nobody watching; stopping
-is the opposite — it spends nothing and loses nothing, and whoever switched the
-clock off wants to find it off tomorrow. Turning on either fast mode restarts
-the clock first, because 130000x behind a stopped clock would do nothing at all,
-and "nothing happened" reads as a broken feature.
+**This is persisted**, like every other setting here — see *What the save
+keeps* below. Turning on either fast mode restarts the clock first, because
+130000x behind a stopped clock would do nothing at all, and "nothing happened"
+reads as a broken feature.
 
 The clock here is session time, not wall time (machine off, plant paused), so
 stopping costs nothing later: the plant does not wake up thirsty or dead, it
@@ -170,6 +168,43 @@ Strain names are never translated: Purple Kush is Purple Kush.
 
 Adding a third language is one object in `I18n.js` (108 keys) plus a vocabulary
 table for the strain data (8 terpenes, 30 aromas, 11 effects, 12 enum terms).
+
+---
+
+## What the save keeps
+
+Everything you change, except one thing that cannot be kept and one that should
+not be. A setting that goes back to its default on the next boot is not a
+setting, it is a question asked again.
+
+| you change | kept |
+|---|---|
+| language (`l`) | yes |
+| colors / visual mode (`v`) | yes |
+| window size and kind (`t`) | yes |
+| automatic care (`a`) | yes |
+| **stopped** (`p`, right click) | yes |
+| **turbo** (`Shift+F`) | yes — it survives closing the room and restarting the shell |
+| the plant, the harvests, the hours | yes, that is the point |
+| demo (`f`) | **no**, and it cannot be |
+| the harvests tab (`Tab`) | no, on purpose |
+
+**The demo cannot be kept** because of what it is: it simulates on a *copy* and
+nothing it does counts, so switching it off throws that copy away. Saving it
+would save the intention of simulating a throwaway on the next boot, which is
+not a state anything could restore.
+
+**The harvests tab is not a setting**, it is where you were looking. The plant
+is the reason the window exists, so opening the room shows the plant — always,
+including right after you closed it on the list. If you want it to reopen where
+you left it, say so and it is one line.
+
+Turbo used to be in the "not kept" column, and that was the wrong call: it is
+the rhythm someone chooses, not a mode they watch, and re-enabling it every
+session was a question asked over and over. What it costs is now documented
+rather than prevented — with the room closed, turbo harvests the plant about
+once a minute, so the 100-harvest history turns over in under two hours. The
+red `·· TURBO 130000x ··` in the header says it is on, every time.
 
 ---
 

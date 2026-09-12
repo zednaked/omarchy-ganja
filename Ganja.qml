@@ -79,11 +79,14 @@ Item {
       Grow.reread()          // outra sessao pode ter escrito; quem vai olhar pergunta
       Grow.publish()
     } else {
-      // Fechar desliga os dois ritmos rapidos. O turbo queima um ciclo por
-      // minuto: deixa-lo correr atras de uma janela fechada seria perder a
-      // planta sem ver.
+      // Fechar desliga a demonstracao, e so ela. A demonstracao simula sobre
+      // uma copia: atras de uma janela fechada ela gastaria CPU para animar uma
+      // planta que ninguem ve e que sera jogada fora de qualquer forma.
+      //
+      // O turbo fica ligado, porque ele e uma preferencia e nao um modo de
+      // olhar - ver a linha longa no Grow.qml. Ele continua sendo o ritmo do
+      // TUI e continua avisado em vermelho no cabecalho.
       Grow.stopFast()
-      if (Grow.turbo) Grow.toggleTurbo()
     }
   }
 

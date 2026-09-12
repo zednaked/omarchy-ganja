@@ -72,8 +72,21 @@ ShellRoot {
     G.toggleTurbo()
     root.eq("turbo despara", G.paused, false)
     root.eq("turbo ligou", G.turbo, true)
+
+    // O turbo e preferencia: vai para o save e volta dele. Isto foi decidido ao
+    // contrario primeiro - ver o comentario dele no Grow.qml.
+    root.eq("snapshot leva o turbo", G.snapshot().turbo, true)
+    G.turbo = false
+    G.adopt({ current_plant: G.plant, turbo: true }, true)
+    root.eq("adopt traz o turbo", G.turbo, true)
+
     G.setPaused(true)
     root.eq("parar desliga o turbo", G.turbo, false)
+    // Um save que diga as duas coisas nao pode acordar nas duas: parada manda.
+    G.adopt({ current_plant: G.plant, turbo: true, paused: true }, true)
+    root.eq("parada manda sobre o turbo", G.turbo, false)
+    root.eq("e continua parada", G.paused, true)
+    G.setPaused(false)
 
     // ---- retomar anda de novo ----------------------------------------------
     G.setPaused(false)
