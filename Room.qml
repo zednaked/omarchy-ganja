@@ -190,70 +190,120 @@ Item {
   }
 
   // ---- cabecalho ----
-  Text {
-    id: header
-    anchors { top: parent.top; left: parent.left; topMargin: room.pad; leftMargin: room.pad + 4 }
-    text: {
-      var d = Art.borderDecoration(room.ui.frame)
-      var speed = (room.ui.frame % 4 < 2) ? ">" : "<"
-      var head = d + " GANJA  ·  " + Grow.tf("room.day", Grow.day) + "  ·  " + Grow.stageLabel
-      if (room.wide) head += "  ·  " + I18n.mode(Grow.lang, Grow.visualMode)
-      head += "  " + d + " " + speed
-      if (Grow.autoCare) head += "   " + Grow.t("room.auto")
-      // Parada vem antes dos dois rapidos porque ela desliga os dois: quem
-      // manda no relogio aparece primeiro, e nao ha estado em que duas destas
-      // tres etiquetas sejam verdade ao mesmo tempo.
-      if (Grow.paused) head += "   " + Grow.t("room.pausedTag")
-      else if (Grow.turbo) head += "   " + Grow.t("room.turboTag")
-      else if (Grow.fast) head += "   " + Grow.t("room.demoTag")
-      return head
-    }
-    // Tres cores para tres riscos, e o terceiro e risco nenhum: a demonstracao
-    // e ambar porque nada do que ela faz conta, o turbo e vermelho porque tudo
-    // conta, e a parada apaga para o tom do rodape - o cabecalho de uma sala
-    // parada nao devia ser a coisa mais acesa da tela.
-    color: Grow.paused ? room.ui.inkDim
-         : Grow.turbo ? "#ff7b6e"
-         : (Grow.fast ? "#ffd166" : room.ui.inkBright)
+  //
+  // Duas coisas dividem esta faixa: o cabecalho, ancorado a esquerda, e a linha
+  // de estado, ancorada a direita. Isso nao e layout - nenhum dos dois sabe a
+  // largura do outro - e o resultado aparece em janela estreita: "·· TURBO
+  // 130000x ··" desenhado por cima de "automatico · a planta se cuida", as duas
+  // frases ilegiveis no mesmo lugar. E exatamente a doenca que o rodape teve, e
+  // a cura e a mesma: quem decide e a MEDIDA dos dois textos, nao um limiar de
+  // largura chutado - que erraria sozinho quando o idioma muda, quando o turbo
+  // liga ou quando o strain tem nome comprido.
+  //
+  // Cabendo lado a lado, nada muda. Nao cabendo, o estado desce para uma linha
+  // propria embaixo do cabecalho, e a faixa cresce so nesse caso.
+  readonly property int headRoom: room.width - 2 * (room.pad + 4)
+  readonly property bool headFits: headMetrics.width + statusMetrics.width + 28 <= room.headRoom
+
+  TextMetrics {
+    id: headMetrics
     font.family: room.ui.mono
     font.pixelSize: 13
     font.weight: Font.DemiBold
+    text: header.text
   }
-
-  Text {
-    anchors { top: header.top; right: parent.right; rightMargin: room.pad + 4 }
-    visible: room.width >= 620
-    // O cabecalho ja escreve "·· TURBO 130000x ··" e "·· demonstracao ··".
-    // Repetir a palavra aqui gastava a unica linha que tem espaco para dizer o
-    // que ela SIGNIFICA.
-    //
-    // Do turbo esse recado saiu. "isto esta acontecendo de verdade" era um
-    // aviso, e aviso que aparece sempre nao e aviso: quem roda em turbo por
-    // padrao le a mesma frase em toda sessao e aprende a nao ver - e ela ocupa
-    // a linha onde caberia o strain, a colheita pronta ou o automatico, que e
-    // informacao que muda. O estado continua dito, e em vermelho, no cabecalho.
-    //
-    // A demonstracao mantem o dela: "nada disto conta" nao e aviso de risco, e
-    // a unica coisa que separa os dois modos rapidos, e quem liga a demo liga
-    // justamente para nao contar.
-    text: room.ui.status !== "" ? room.ui.status
-        : Grow.paused ? Grow.t("room.pausedMeaning")
-        : Grow.fast ? Grow.t("room.demoMeaning")
-        : (Grow.ready ? Grow.t("room.readyStatus")
-          : Grow.autoCare ? Grow.t("room.autoStatus") : Grow.strainName)
-    // Parada, esta linha diz como sair - e a unica instrucao que a sala da sem
-    // ninguem pedir, porque e o unico estado em que nada mais vai acontecer ate
-    // alguem agir. E o ambar de "pronta para colher" sai: parada, a colheita
-    // nao esta esperando, ela esta congelada junto.
-    color: room.ui.status !== "" ? room.ui.inkBright
-         : (Grow.ready && !Grow.paused ? "#ffd166" : room.ui.inkDim)
+  TextMetrics {
+    id: statusMetrics
     font.family: room.ui.mono
     font.pixelSize: 12
+    text: statusLine.text
+  }
+
+  Item {
+    id: headBand
+    anchors {
+      top: parent.top; left: parent.left; right: parent.right
+      topMargin: room.pad; leftMargin: room.pad + 4; rightMargin: room.pad + 4
+    }
+    height: header.implicitHeight
+      + (room.headFits || !statusLine.visible ? 0 : statusLine.implicitHeight + 5)
+
+    Text {
+      id: header
+      anchors { top: parent.top; left: parent.left }
+      text: {
+        var d = Art.borderDecoration(room.ui.frame)
+        var speed = (room.ui.frame % 4 < 2) ? ">" : "<"
+        var head = d + " GANJA  ·  " + Grow.tf("room.day", Grow.day) + "  ·  " + Grow.stageLabel
+        if (room.wide) head += "  ·  " + I18n.mode(Grow.lang, Grow.visualMode)
+        head += "  " + d + " " + speed
+        if (Grow.autoCare) head += "   " + Grow.t("room.auto")
+        // Parada vem antes dos dois rapidos porque ela desliga os dois: quem
+        // manda no relogio aparece primeiro, e nao ha estado em que duas destas
+        // tres etiquetas sejam verdade ao mesmo tempo.
+        if (Grow.paused) head += "   " + Grow.t("room.pausedTag")
+        else if (Grow.turbo) head += "   " + Grow.t("room.turboTag")
+        else if (Grow.fast) head += "   " + Grow.t("room.demoTag")
+        return head
+      }
+      // Tres cores para tres riscos, e o terceiro e risco nenhum: a demonstracao
+      // e ambar porque nada do que ela faz conta, o turbo e vermelho porque tudo
+      // conta, e a parada apaga para o tom do rodape - o cabecalho de uma sala
+      // parada nao devia ser a coisa mais acesa da tela.
+      color: Grow.paused ? room.ui.inkDim
+           : Grow.turbo ? "#ff7b6e"
+           : (Grow.fast ? "#ffd166" : room.ui.inkBright)
+      font.family: room.ui.mono
+      font.pixelSize: 13
+      font.weight: Font.DemiBold
+    }
+
+    Text {
+      id: statusLine
+      // Na mesma linha vai a direita; em linha propria, comeca embaixo do
+      // cabecalho e alinhada com ele. Atribuir `undefined` a uma ancora e como se
+      // desfaz a outra - sem isso as duas valem e a que vier depois ganha.
+      anchors {
+        top: room.headFits ? header.top : header.bottom
+        topMargin: room.headFits ? 0 : 5
+        right: room.headFits ? parent.right : undefined
+        left: room.headFits ? undefined : parent.left
+      }
+      // Abaixo disto a sala e estreita demais para uma frase a mais de qualquer
+      // forma, e a planta e o motivo da janela existir.
+      visible: room.width >= 560
+      // O cabecalho ja escreve "·· TURBO 130000x ··" e "·· demonstracao ··".
+      // Repetir a palavra aqui gastava a unica linha que tem espaco para dizer o
+      // que ela SIGNIFICA.
+      //
+      // Do turbo esse recado saiu. "isto esta acontecendo de verdade" era um
+      // aviso, e aviso que aparece sempre nao e aviso: quem roda em turbo por
+      // padrao le a mesma frase em toda sessao e aprende a nao ver - e ela ocupa
+      // a linha onde caberia o strain, a colheita pronta ou o automatico, que e
+      // informacao que muda. O estado continua dito, e em vermelho, no cabecalho.
+      //
+      // A demonstracao mantem o dela: "nada disto conta" nao e aviso de risco, e
+      // a unica coisa que separa os dois modos rapidos, e quem liga a demo liga
+      // justamente para nao contar.
+      text: room.ui.status !== "" ? room.ui.status
+          : Grow.paused ? Grow.t("room.pausedMeaning")
+          : Grow.fast ? Grow.t("room.demoMeaning")
+          : (Grow.ready ? Grow.t("room.readyStatus")
+            : Grow.autoCare ? Grow.t("room.autoStatus") : Grow.strainName)
+      // Parada, esta linha diz como sair - e a unica instrucao que a sala da sem
+      // ninguem pedir, porque e o unico estado em que nada mais vai acontecer ate
+      // alguem agir. E o ambar de "pronta para colher" sai: parada, a colheita
+      // nao esta esperando, ela esta congelada junto.
+      color: room.ui.status !== "" ? room.ui.inkBright
+           : (Grow.ready && !Grow.paused ? "#ffd166" : room.ui.inkDim)
+      font.family: room.ui.mono
+      font.pixelSize: 12
+    }
   }
 
   Rectangle {
     id: topRule
-    anchors { top: header.bottom; left: parent.left; right: parent.right; topMargin: 14 }
+    anchors { top: headBand.bottom; left: parent.left; right: parent.right; topMargin: 14 }
     height: 1
     color: room.ui.rule
   }
