@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "id": "zed.ganja",
   "name": "Ganja",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "ZeD",
   "license": "MIT",
   "homepage": "https://github.com/zednaked/omarchy-ganja",
-  "description": "A cannabis plant that grows in your bar. The grow from Ganja-TUI - same genetics, same ASCII art, same save - in pure QML, with no binary and no resident process. Closed it costs one 60-second timer; stopped, nothing at all.",
+  "description": "A cannabis plant that grows in your bar. The grow from Ganja-TUI - same genetics, same ASCII art, same save - in pure QML, with no binary and no resident process. Closed it costs one 60-second timer; stopped, nothing at all. English or Portuguese, and the rhythm is yours.",
   "kinds": ["bar-widget", "overlay"],
   "keepLoaded": true,
   "entryPoints": {
