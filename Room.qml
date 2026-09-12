@@ -225,11 +225,19 @@ Item {
     visible: room.width >= 620
     // O cabecalho ja escreve "·· TURBO 130000x ··" e "·· demonstracao ··".
     // Repetir a palavra aqui gastava a unica linha que tem espaco para dizer o
-    // que ela SIGNIFICA - que e a diferenca entre os dois modos e a unica coisa
-    // que o jogador precisa saber quando olha para ca.
+    // que ela SIGNIFICA.
+    //
+    // Do turbo esse recado saiu. "isto esta acontecendo de verdade" era um
+    // aviso, e aviso que aparece sempre nao e aviso: quem roda em turbo por
+    // padrao le a mesma frase em toda sessao e aprende a nao ver - e ela ocupa
+    // a linha onde caberia o strain, a colheita pronta ou o automatico, que e
+    // informacao que muda. O estado continua dito, e em vermelho, no cabecalho.
+    //
+    // A demonstracao mantem o dela: "nada disto conta" nao e aviso de risco, e
+    // a unica coisa que separa os dois modos rapidos, e quem liga a demo liga
+    // justamente para nao contar.
     text: room.ui.status !== "" ? room.ui.status
         : Grow.paused ? Grow.t("room.pausedMeaning")
-        : Grow.turbo ? Grow.t("room.turboMeaning")
         : Grow.fast ? Grow.t("room.demoMeaning")
         : (Grow.ready ? Grow.t("room.readyStatus")
           : Grow.autoCare ? Grow.t("room.autoStatus") : Grow.strainName)
@@ -481,16 +489,24 @@ Item {
           spacing: 10
           readonly property real cell: (width - 20) / 3
 
+          // O caractere de animacao vem separado por um espaco, e o TUI cola
+          // (`format!("Water{}", water_drops)`). A divergencia e deliberada e o
+          // motivo e o idioma: colado, "npk" + "X" vira `npkX` e "water" + "O"
+          // vira `waterO`, que em ingles se leem como erro de digitacao - em
+          // portugues "npk*" passava por enfeite. O espaco custa uma coluna e
+          // devolve a leitura; a fidelidade que este projeto promete e a da
+          // matriz 70x28 da planta, nao a do titulo de um medidor, que ja
+          // divergia no caixa (o TUI usa "Water" e "NPK" com maiuscula).
           Meter {
             width: parent.cell
-            title: Grow.t("m.water") + Art.waterDrops(room.ui.frame)
+            title: Grow.t("m.water") + " " + Art.waterDrops(room.ui.frame)
             value: Grow.water
             label: Math.round(Grow.water) + "%"
             fill: room.ui.waterColor
           }
           Meter {
             width: parent.cell
-            title: Grow.t("m.npk") + Art.nutrientSparkles(room.ui.frame)
+            title: Grow.t("m.npk") + " " + Art.nutrientSparkles(room.ui.frame)
             value: Grow.nutrients
             label: Math.round(Grow.nutrients) + "%"
             fill: room.ui.npkColor
