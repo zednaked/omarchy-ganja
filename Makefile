@@ -6,7 +6,7 @@
 #   make diff      compara a saida de hoje com as fixtures
 #   make verify    confere as fixtures dentro do motor de JS do QML
 #   make state     roda o Grow.qml de verdade e confere o que ele guarda
-#   make hostile   joga FIFO, symlink e save gigante contra o save.sh
+#   make hostile   joga FIFO, symlink, hardlink e save gigante contra o save.py
 #   make glyphs    confere os sete icones da barra contra a fonte instalada
 #   make test      check + diff + verify
 #
@@ -56,10 +56,11 @@ verify:
 state:
 	@test/stage.sh state.qml
 
-# Os cenarios que a revisao de seguranca do marketplace apontou na issue #6530.
-# Roda em HOME temporario proprio, como os outros.
+# Os cenarios que a revisao de seguranca do marketplace apontou na issue #6530,
+# inclusive o symlink no MEIO do caminho, que foi o ultimo a ser fechado.
+# Cada caso roda em HOME temporario proprio, como os outros testes.
 hostile:
-	@sh test/save.sh.test
+	@python3 test/hostile.py
 
 glyphs:
 	@python3 test/glyphs.py

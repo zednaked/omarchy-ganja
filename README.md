@@ -67,7 +67,8 @@ that took time to make, and uninstalling a plugin is not the same as saying
 rm -rf ~/.local/share/zed.ganja
 ```
 
-**Requirements:** Omarchy with `omarchy-shell` (plugin schemaVersion 1) and a
+**Requirements:** Omarchy with `omarchy-shell` (plugin schemaVersion 1),
+`python3` (for `save.py`, the disk helper — see *The save, and the TUI*), and a
 Nerd Font in the bar — the stage glyphs come from the Material Design set
 (`md-sprout`, `md-cannabis`, …). `make glyphs` checks the eight glyphs against
 the font actually installed on the machine.
@@ -283,23 +284,47 @@ plugin's own file. Moving a plant between the two is a file copy:
 cp ~/.local/share/zed.ganja/save.json ~/.local/share/ganjatui/save.json
 ```
 
-Every read and write goes through `save.sh`, the one place in this plugin that
-touches the disk. It is invoked as `/bin/sh save.sh <mode> <paths…>` with a
-cleared environment, paths as **arguments** rather than interpolated into shell
-source, a byte cap and a deadline on anything that can block, and these checks
-before it acts: not a symlink, a regular file (which rules out FIFOs, sockets
-and devices), owned by us, and within the cap. Writes go to a `mktemp` file
-(random name, created with `O_EXCL`, mode 600), get `sync`ed, and are moved into
-place — `mv` replaces a symlink rather than writing through it, and the rename
-is atomic.
+Every read and write goes through `save.py`, the one place in this plugin that
+touches the disk, invoked as `/usr/bin/python3 -I save.py <mode> <paths>` with a
+cleared environment. Paths arrive as **arguments** and are **relative to
+`$HOME`** — the helper never accepts an absolute path.
+
+What it guarantees, and how:
+
+- **the path is descriptors, not a name.** Starting from a validated fd on
+  `$HOME`, it walks one component at a time with `openat(O_DIRECTORY |
+  O_NOFOLLOW)`. A symlink swapped in anywhere along the chain makes the open
+  fail rather than follow. That fd is then held through the read, the write, the
+  fsync, the rename and the cleanup, so nothing is re-resolved from the root
+  afterwards;
+- **the file is validated on the fd it will be read from** — `fstat` says
+  regular file (which rules out FIFOs, sockets and devices), owned by us,
+  exactly one link (so a hardlink to someone else's file is refused), and within
+  a 1 MiB cap. There is no window between checking and using: it is the same
+  descriptor;
+- **the write publishes without re-resolving the parent.** The temp file is a
+  random name created `O_CREAT | O_EXCL | O_NOFOLLOW` relative to that fd,
+  mode 600; then `fsync`, then `renameat` on the *same* fd for both source and
+  destination, then `fsync` of the directory;
+- **bounded and deadlined:** 1 MiB on reads and writes, `SIGALRM` after five
+  seconds, and `-I` so the interpreter ignores `PYTHON*`, user site-packages and
+  the script's own directory.
 
 That shape came out of the marketplace security review
 ([#6530](https://github.com/omacom/omarchy-plugin-marketplace/issues/6530)),
-which found the earlier version guilty of three things worth fixing: paths
-interpolated into shell source, an unbounded read (a huge file or a FIFO in
-place of the save could exhaust or hang the shell process the whole bar lives
-in), and a predictable `save.json.$$.tmp` that a pre-positioned symlink could
-redirect. `make hostile` is the test that throws all of that at it.
+in two rounds. The first version interpolated paths into shell source and read
+without limits — a huge file, or a FIFO in place of the save, could exhaust or
+hang the process the whole bar lives in — and used a predictable
+`save.json.$$.tmp` that a pre-positioned symlink could redirect. The second was
+a hardened shell helper, and the reviewer was right to block it too: in shell
+every command re-resolves the path, so `[ -f ]` followed by `head`/`mv` is two
+resolutions with a window between them, and `sh` cannot reach `openat`,
+`renameat` or `O_NOFOLLOW`. Python can. `make hostile` throws all of it back:
+FIFO, symlink at the leaf, symlink mid-path, hardlink, oversized save, planted
+temp file.
+
+**This is why the plugin needs `python3`** — the only runtime dependency beyond
+Omarchy itself, and one Omarchy's own scripts already have.
 
 Opening the overlay re-reads the save: if the one on disk is newer, it wins.
 Last write wins, no locks — and that is also why there is no "reload" key: the
@@ -342,7 +367,7 @@ make check     # the LCG and 64-bit division against Node's BigInt
 make diff      # today's output against the fixtures in test/frames/
 make verify    # the fixtures against the QML JS engine
 make state     # the real Grow.qml: stopping, language, what the save carries
-make hostile   # FIFO, symlink, oversized save and planted temp file vs save.sh
+make hostile   # FIFO, symlink, mid-path symlink, hardlink, oversized save
 make glyphs    # the eight bar icons against the installed font
 ```
 
@@ -400,7 +425,7 @@ Room.qml         what you see inside, identical in both windows
 Art.js           port of ascii/art.rs - SimpleRng, PlantStructure, render
 Palette.js       port of ui/colors.rs - the four palettes
 I18n.js          every screen string, in both languages, plus the strain vocabulary
-save.sh          the only code that touches the disk - bounded, checked, atomic
+save.py          the only code that touches the disk - fd-pinned, bounded, atomic
 Strains.js       generated from strains.json by `make strains`
 test/            frame fixtures, the Node harness, the QML ones, the state one
 SPEC.md          the decisions and why they are what they are (Portuguese)

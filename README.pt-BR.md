@@ -339,22 +339,45 @@ cópia de arquivo:
 cp ~/.local/share/zed.ganja/save.json ~/.local/share/ganjatui/save.json
 ```
 
-Toda leitura e toda escrita passam pelo `save.sh`, o único lugar deste plugin
-que toca o disco. Ele é chamado como `/bin/sh save.sh <modo> <caminhos…>`, com
-ambiente limpo, os caminhos como **argumentos** em vez de interpolados no texto
-do shell, teto de bytes e prazo em tudo que pode bloquear, e estes cheques antes
-de agir: não é symlink, é arquivo regular (o que descarta FIFO, socket e
-dispositivo), é nosso, e cabe no teto. A escrita vai para um `mktemp` (nome
-aleatório, criado com `O_EXCL`, modo 600), passa por `sync` e só então é movida
-— `mv` substitui um symlink em vez de escrever através dele, e a troca é atômica.
+Toda leitura e toda escrita passam pelo `save.py`, o único lugar deste plugin
+que toca o disco, chamado como `/usr/bin/python3 -I save.py <modo> <caminhos>`
+com ambiente limpo. Os caminhos chegam como **argumentos** e são **relativos ao
+`$HOME`** — o helper não aceita caminho absoluto.
+
+O que ele garante, e como:
+
+- **o caminho é descritor, não nome.** Partindo de um fd validado no `$HOME`,
+  ele desce um componente por vez com `openat(O_DIRECTORY | O_NOFOLLOW)`. Um
+  symlink trocado em qualquer ponto da corrente faz a abertura **falhar** em vez
+  de seguir. Esse fd é mantido pela leitura, pela gravação, pelo fsync, pelo
+  rename e pela limpeza — nada é re-resolvido desde a raiz depois disso;
+- **o arquivo é validado no fd de onde vai ser lido** — `fstat` diz que é
+  arquivo regular (descarta FIFO, socket e dispositivo), que é nosso, que tem
+  exatamente um link (então hardlink para arquivo de outro é recusado) e que
+  cabe no teto de 1 MiB. Não há janela entre checar e usar: é o mesmo descritor;
+- **a gravação publica sem re-resolver o pai.** O temporário é um nome aleatório
+  criado com `O_CREAT | O_EXCL | O_NOFOLLOW` relativo àquele fd, modo 600;
+  depois `fsync`, depois `renameat` no **mesmo** fd dos dois lados, depois
+  `fsync` do diretório;
+- **limitado e com prazo:** 1 MiB na leitura e na escrita, `SIGALRM` em cinco
+  segundos, e `-I` para o interpretador ignorar `PYTHON*`, o site do usuário e o
+  diretório do próprio script.
 
 Essa forma saiu da revisão de segurança do marketplace
-([#6530](https://github.com/omacom/omarchy-plugin-marketplace/issues/6530)), que
-apontou três coisas na versão anterior, com razão: caminho interpolado em código
-de shell; leitura sem limite (um arquivo gigante ou um FIFO no lugar do save
-esgotava ou travava o processo do shell onde a barra inteira mora); e um
-`save.json.$$.tmp` previsível, que um symlink pré-posicionado redirecionava.
-`make hostile` é o teste que joga tudo isso contra ele.
+([#6530](https://github.com/omacom/omarchy-plugin-marketplace/issues/6530)), em
+duas rodadas. A primeira versão interpolava caminho em código de shell e lia sem
+limite — arquivo gigante, ou FIFO no lugar do save, esgotava ou travava o
+processo onde a barra inteira mora — e usava um `save.json.$$.tmp` previsível
+que um symlink pré-posicionado redirecionava. A segunda era um helper de shell
+endurecido, e o revisor estava certo em bloquear também: em shell cada comando
+re-resolve o caminho, então `[ -f ]` seguido de `head`/`mv` são duas resoluções
+com uma janela no meio, e o `sh` não alcança `openat`, `renameat` nem
+`O_NOFOLLOW`. O Python alcança. `make hostile` joga tudo de volta: FIFO, symlink
+na folha, symlink no meio do caminho, hardlink, save gigante, temporário
+plantado.
+
+**É por isso que o plugin precisa de `python3`** — a única dependência de tempo
+de execução além do próprio Omarchy, e que os scripts do Omarchy já têm.
 
 Abrir o overlay relê o save: se o do disco for mais novo, ele
 ganha. Última escrita vence, sem lock — e é por isso que não existe tecla de
@@ -397,7 +420,7 @@ make check     # o LCG e as divisões de 64 bits contra o BigInt do Node
 make diff      # a saída de hoje contra as fixtures de test/frames/
 make verify    # as fixtures contra o motor de JS do QML
 make state     # o Grow.qml de verdade: parada, idioma e o que o save leva
-make hostile   # FIFO, symlink, save gigante e temporário plantado contra o save.sh
+make hostile   # FIFO, symlink, symlink no meio do caminho, hardlink, save gigante
 make glyphs    # os oito ícones da barra contra a fonte instalada
 ```
 
@@ -483,7 +506,7 @@ Room.qml         o que se vê por dentro, igual nas duas janelas
 Art.js           porta de ascii/art.rs - SimpleRng, PlantStructure, render
 Palette.js       porta de ui/colors.rs - as quatro paletas
 I18n.js          todo o texto de tela, nos dois idiomas, e o vocabulário do strain
-save.sh          o único código que toca o disco - limitado, conferido, atômico
+save.py          o único código que toca o disco - preso a fd, limitado, atômico
 Strains.js       gerado de strains.json por `make strains`
 test/            fixtures de frame, o harness de Node, o de QML e o de estado
 ```

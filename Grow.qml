@@ -69,7 +69,15 @@ Singleton {
   // hora de jogo esvaziaria o vaso a cada duas horas e meia de sessao.
   property real careScale: 0.2
 
-  readonly property string dir: Quickshell.env("HOME") + "/.local/share/zed.ganja"
+  // Os caminhos sao RELATIVOS ao $HOME, e e nessa forma que o helper os recebe:
+  // ele desce componente por componente a partir de um descritor do $HOME, com
+  // O_NOFOLLOW em cada passo, e nunca aceita um caminho absoluto. As duas
+  // propriedades absolutas abaixo existem so para o que mostra caminho na tela
+  // e para os testes.
+  readonly property string relDir: ".local/share/zed.ganja"
+  readonly property string relLegacy: ".local/share/omarchy-guest/ganja/save.json"
+
+  readonly property string dir: Quickshell.env("HOME") + "/" + root.relDir
   readonly property string saveFile: root.dir + "/save.json"
 
   // Onde o save morava enquanto o plugin era uma pasta dentro do omarchy-guest.
@@ -81,22 +89,31 @@ Singleton {
   // Adotado o save antigo, a primeira gravacao cai no lugar novo e o antigo fica
   // onde esta, intacto: se alguem voltar para a versao de dentro do guest, a
   // planta dele ainda esta la.
-  readonly property string legacySaveFile: Quickshell.env("HOME")
-    + "/.local/share/omarchy-guest/ganja/save.json"
+  readonly property string legacySaveFile: Quickshell.env("HOME") + "/" + root.relLegacy
 
-  // O unico lugar que toca o disco e o save.sh ao lado deste arquivo, sempre
-  // chamado como `/bin/sh save.sh <modo> <caminhos...>`. Os caminhos vao como
-  // ARGUMENTOS e nunca dentro do texto do script - era isso que a revisao de
-  // seguranca do marketplace (issue #6530) apontava primeiro, e o texto
-  // constante nao tem superficie de citacao nenhuma.
+  // O unico lugar que toca o disco e o save.py ao lado deste arquivo, sempre
+  // chamado como `/usr/bin/python3 -I save.py <modo> <caminhos relativos>`.
   //
-  // Ler os dois limites, os cheques e o porque de cada um: save.sh.
-  readonly property string helper: String(Qt.resolvedUrl("save.sh")).replace("file://", "")
+  // Isto era um `save.sh` e virou Python por exigencia da revisao de seguranca
+  // do marketplace (issue #6530), e a exigencia estava certa: em shell, cada
+  // comando resolve o caminho de novo, entao checar com `[ -f ]` e depois usar
+  // `head`/`mv` sao duas resolucoes diferentes, e o que foi checado pode ser
+  // trocado no meio. O `sh` nao alcanca `openat`, `renameat` nem `O_NOFOLLOW`;
+  // o Python alcanca, e a identidade do diretorio passa a ser um descritor
+  // aberto uma vez e mantido pela leitura, pela gravacao, pelo fsync e pelo
+  // rename. As garantias, uma por uma, estao no cabecalho do save.py.
+  //
+  // `-I` e o modo isolado: ignora PYTHON*, o site do usuario e o diretorio do
+  // script no sys.path.
+  readonly property string helper: String(Qt.resolvedUrl("save.py")).replace("file://", "")
 
-  // Ambiente fechado, do lado do QML: o filho nao herda nada do shell da barra.
-  // O PATH minimo esta aqui E dentro do script, de proposito - um dos dois
-  // sozinho seria suficiente, e os dois juntos custam uma linha.
-  readonly property var helperEnv: ({ "PATH": "/usr/bin:/bin" })
+  // Ambiente fechado: o filho nao herda nada do shell da barra. O HOME vai
+  // porque e a raiz de confianca do helper - e o unico caminho que ele abre por
+  // nome, e todo o resto desce de um descritor dele.
+  readonly property var helperEnv: ({
+    "PATH": "/usr/bin:/bin",
+    "HOME": Quickshell.env("HOME")
+  })
 
   // ---- estado --------------------------------------------------------------
 
@@ -829,7 +846,7 @@ Singleton {
     // marca, a unica forma de saber seria um segundo processo perguntando ao
     // disco - e um boot que grava sempre, para o caso de ter migrado, cobraria
     // de todo mundo uma escrita que interessa a uma pessoa uma vez na vida.
-    command: ["/bin/sh", root.helper, "read", root.dir, root.legacySaveFile]
+    command: ["/usr/bin/python3", "-I", root.helper, "read", root.relDir, root.relLegacy]
     clearEnvironment: true
     environment: root.helperEnv
     stdout: StdioCollector {
@@ -874,7 +891,7 @@ Singleton {
   Process {
     id: rereader
     // Sem o caminho antigo: migrar e coisa de uma vez, na carga.
-    command: ["/bin/sh", root.helper, "read", root.dir]
+    command: ["/usr/bin/python3", "-I", root.helper, "read", root.relDir]
     clearEnvironment: true
     environment: root.helperEnv
     stdout: StdioCollector {
@@ -903,12 +920,12 @@ Singleton {
   Process {
     id: writer
     stdinEnabled: true
-    // O temporario agora tem nome aleatorio, criado por `mktemp` com O_EXCL -
-    // o `save.json.$$.tmp` de antes era previsivel, e um symlink pre-posicionado
-    // ali fazia a gravacao sair em outro lugar. Era o segundo achado da revisao
-    // de seguranca. O nome aleatorio tambem resolve o que o PID resolvia: duas
+    // O temporario tem nome aleatorio e e criado com O_CREAT|O_EXCL|O_NOFOLLOW
+    // relativo ao descritor do diretorio - o `save.json.$$.tmp` de antes era
+    // previsivel, e um symlink pre-posicionado ali fazia a gravacao sair em
+    // outro lugar. O nome aleatorio tambem resolve o que o PID resolvia: duas
     // instancias do shell nunca escolhem o mesmo arquivo.
-    command: ["/bin/sh", root.helper, "write", root.dir]
+    command: ["/usr/bin/python3", "-I", root.helper, "write", root.relDir]
     clearEnvironment: true
     environment: root.helperEnv
     onStarted: {
@@ -952,7 +969,8 @@ Singleton {
       // cheques, o sync, o mv - e exatamente o mesmo caminho do escritor normal,
       // porque duplicar a gravacao e como um dos dois lados fica para tras.
       var snap = JSON.stringify(root.snapshot())
-      Quickshell.execDetached(["/bin/sh", root.helper, "writenow", root.dir, snap])
+      Quickshell.execDetached(["/usr/bin/python3", "-I", root.helper,
+        "writenow", root.relDir, snap])
     }
   }
 }

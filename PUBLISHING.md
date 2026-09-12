@@ -113,25 +113,50 @@ O que ele apontou, e por que estava certo:
    symlink pré-posicionado: quem consegue criar arquivo no diretório faz a
    gravação sair em outro lugar. O caminho da descarga do shell repetia o erro.
 
-O remédio está no `save.sh`, o único lugar que toca o disco: caminhos como
-argumentos (texto do script constante), `clearEnvironment` no Process e PATH
-fixo no script, teto de 1 MiB e `timeout` em tudo que pode bloquear, cheque de
-não-symlink + arquivo regular + dono antes de ler, `mktemp` (O_EXCL, modo 600)
-para gravar, `sync` antes do `mv`, e `mv` — que substitui um symlink em vez de
-escrever através dele.
+A primeira resposta foi um `save.sh` endurecido: caminhos como argumentos,
+`clearEnvironment`, teto de 1 MiB, `timeout`, cheques de não-symlink + arquivo
+regular + dono, `mktemp` com O_EXCL, `sync` e `mv`. Eu escrevi na resposta que
+abertura relativa a descritor com `O_NOFOLLOW` "não dava neste stack".
 
-**O que não foi feito, e não dá:** abertura relativa a descritor com
-`O_NOFOLLOW`. É chamada de sistema, e nem o `sh` nem o QML alcançam. O que
-substitui é o par "cheque imediatamente antes do uso" + "prazo em toda
-operação": uma corrida ganha entre o cheque e o uso custa cinco segundos, não um
-travamento, e o vetor de escrita pré-posicionada deixou de existir porque o nome
-do temporário é aleatório e criado com exclusividade. Isso está dito na resposta
-à issue com essas palavras — prometer o que não se entregou é pior que explicar
-o limite.
+**Ele voltou, aceitou as correções e bloqueou justamente nisso** — e estava
+certo nas duas vezes:
 
-`make hostile` é o teste dos cenários dele: FIFO, symlink no lugar do save,
-symlink como diretório, save de 2 MiB, temporário plantado, e a limpeza de
-temporário velho. Vinte verificações.
+> Directory checks and file checks are separate from the later `head`, `mktemp`,
+> `sync`, `mv`, and cleanup path resolutions. An accepted directory/file
+> component can be exchanged between check and use; a timeout limits duration but
+> does not prevent reading from or publishing into the substituted location.
+> `mktemp` protects only the unpredictable leaf.
+
+Em shell, cada comando resolve o caminho do zero: checar com `[ -f ]` e depois
+usar `head`/`mv` são duas resoluções com uma janela no meio, e nenhum comando do
+`sh` aceita descritor em vez de nome. O que estava errado na minha resposta não
+era o diagnóstico, era o "não dá": **o `sh` não alcança `openat`, mas o Python
+alcança.**
+
+O remédio final é o `save.py`, e a garantia mudou de natureza: o caminho deixou
+de ser um nome resolvido três vezes e passou a ser um **descritor** aberto uma
+vez e mantido.
+
+- descida componente por componente a partir de um fd do `$HOME`, cada passo com
+  `openat(O_DIRECTORY | O_NOFOLLOW)` — symlink em qualquer ponto faz falhar, e
+  não seguir (o `O_NOFOLLOW` de um `open` só protege o último componente, e era
+  isso que faltava);
+- arquivo validado **no fd de onde vai ser lido**: regular, nosso, `st_nlink == 1`
+  (pega hardlink, que nenhum cheque de symlink pegaria), dentro do teto;
+- gravação com `O_CREAT | O_EXCL | O_NOFOLLOW` relativo àquele fd, `fsync`,
+  `renameat` no **mesmo** fd dos dois lados, `fsync` do diretório;
+- teto de 1 MiB, `SIGALRM` em cinco segundos, `python3 -I` (ignora `PYTHON*`, o
+  site do usuário e o diretório do script).
+
+Custo: o plugin passou a depender de `python3`. É a única dependência de tempo
+de execução além do Omarchy, e os scripts do próprio Omarchy já usam python3 —
+está declarado nos dois READMEs.
+
+`make hostile` (28 verificações) é o teste dos cenários dele, inclusive os dois
+que fecharam a última rodada: **symlink no meio do caminho** e **hardlink**.
+
+A lição que vale registrar: "não dá neste stack" é uma afirmação sobre o que eu
+sei, não sobre o que existe. Custou uma rodada de revisão.
 
 ## 4. A baseline de segurança
 
