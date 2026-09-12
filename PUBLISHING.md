@@ -122,35 +122,46 @@ diretório de save — `cat` para ler, `mkdir -p` + `mv` para gravar de forma
 atômica, e um `find -delete` de `.tmp` velho. Nenhuma delas toca em nada fora de
 `~/.local/share/zed.ganja/`.
 
-## 5. O que falta antes de submeter
+## 5. Submetido em 12/09/2026
 
-1. **Abrir a issue de submissão** com os campos da seção 3. É o único passo
-   que fala com gente de fora, e está esperando a sua palavra.
-2. **Refazer o `preview.png` sem o ponteiro do mouse.** O que está lá é a sala
-   em `full`, em inglês, com tudo à mostra (planta, seis medidores, painel do
-   strain, linha de atalhos inteira) — mas o cursor ficou por cima do medidor de
-   raiz/copa. Refazer é `omarchy-shell ganja window full; omarchy-shell ganja
-   open`, tirar o ponteiro do caminho, `grim` e reduzir para 1440 de largura.
-3. **Um `LICENSE` no Ganja-TUI também.** O repo de origem declara MIT no
-   `Cargo.toml` e no README, mas não tem o arquivo. Como a submissão pede
-   "licença e dependências documentadas" e este plugin é porte daquele código, a
-   procedência fica mais fácil de verificar com o arquivo lá.
-4. **Decidir o que acontece com a cópia dentro do `omarchy-guest`.** Hoje existem
-   duas: `~/Projetos/omarchy-guest/plugins/zed.ganja/` e este repo. Duas cópias
-   do mesmo QML divergem — é questão de semanas. As saídas, em ordem de
-   preferência:
-   - remover a pasta do `omarchy-guest` e instalar pelo
-     `omarchy plugin add https://github.com/zednaked/omarchy-ganja` (o `install`
-     do guest deixa de ter o que copiar, e a atualização passa a ser
-     `omarchy plugin update zed.ganja`);
-   - manter no guest como submódulo de git apontando para este repo;
-   - manter as duas à mão, que é a que não se sustenta.
-5. **Rodar `make test` na máquina** (precisa de `node`, `qs` e
-   `python-fonttools`) e, se houver uma com `cargo`, fechar o `diff` contra o
-   Ganja-TUI de verdade — é o único item da fidelidade que ainda é declarado e
-   não comprovado. Ver `test/README.md`.
+**Issue: <https://github.com/omacom/omarchy-plugin-marketplace/issues/6530>**
+(`[Plugin]: Ganja`, categoria Widgets, tags Bar/Games/Quickshell.) O corpo segue
+o formato gerado pelo próprio template — os cabeçalhos `###` na ordem, os cinco
+itens da checklist marcados — porque é assim que as submissões que passam se
+parecem; conferi em duas issues abertas (#6525 e #6526, ambas com os labels
+`submission, validated`) antes de escrever a nossa. Labels não dão para aplicar
+de fora: quem não é colaborador do repo não tem permissão, e a automação deles
+que rotula.
 
-## 6. Coisas que **não** são exigidas, e por que ficam como estão
+Feito antes de submeter, e por quê:
+
+- `preview.png` — a sala em `full`, em inglês, sem ponteiro do mouse (o card do
+  marketplace é lido em inglês).
+- **`LICENSE` no Ganja-TUI** — o repo de origem declarava MIT no `Cargo.toml` e
+  no README e não tinha o arquivo. A submissão pede "licença e dependências
+  documentadas", e a procedência de um porte se verifica em um passo com o
+  arquivo lá.
+- **A cópia dentro do `omarchy-guest` saiu.** Eram duas cópias do mesmo QML, e a
+  que alguém edita nunca é a que está instalada. O `plugins/zed.ganja/` foi
+  removido de lá (com uma nota no README do guest apontando para cá), e a
+  instalação da máquina passou a ser gerenciada por git:
+  `omarchy plugin add https://github.com/zednaked/omarchy-ganja`. `omarchy
+  plugin update zed.ganja` responde "up to date", e a planta sobreviveu à troca
+  — o save nunca morou dentro da pasta do plugin.
+
+## 6. O que continua em aberto
+
+**O `diff` contra o Ganja-TUI de verdade.** Precisa de uma máquina com `cargo`,
+rodando o TUI com as mesmas 8 seeds e os mesmos 8 dias e comparando com
+`test/frames/`. Enquanto isso não acontecer, a fidelidade é declarada e não
+comprovada — e o README diz isso com essas palavras. Ver `test/README.md`.
+
+**A otimização do quadro.** 30 ms de CPU para desenhar 70×28 caracteres é caro
+em uma ordem de grandeza; a causa provável é regerar a matriz inteira a cada
+quadro. As 64 fixtures são o que garante que a otimização não muda a planta.
+Não é urgente: só existe enquanto alguém olha, e agora o `p` zera até isso.
+
+## 7. Coisas que **não** são exigidas, e por que ficam como estão
 
 - **O `id` em DNS invertido.** A documentação sugere
   `io.github.<usuário>.<plugin>`, mas o validador só exige o formato e a saída do

@@ -428,6 +428,15 @@ para a terceira, e não há terceira pedida.
 ## 15. Publicação — decidido em 12/09/2026
 
 A seção 11.3 adiava: construir dentro do `omarchy-guest` e decidir depois. Está
-decidido — **repo próprio, para submeter aos plugins oficiais do Omarchy**. O
-que a submissão exige está em `PUBLISHING.md`.
+decidido e feito — **repo próprio**, `github.com/zednaked/omarchy-ganja`,
+submetido ao marketplace oficial em 12/09/2026 (issue #6530). O caminho inteiro,
+com o que o validador e a baseline de segurança exigem, está em
+`PUBLISHING.md`.
+
+A cópia dentro do `omarchy-guest` saiu no mesmo dia, e isso revisa a decisão da
+seção 11.3: ela dizia que adiar não custava nada porque sair dali era uma cópia
+de pasta. Era verdade, mas o que custa é **manter** as duas — duas cópias do
+mesmo QML divergem, e a que alguém edita nunca é a que está instalada. A
+instalação na máquina passou a ser `omarchy plugin add` + `omarchy plugin
+update`.
 
