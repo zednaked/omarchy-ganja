@@ -118,6 +118,42 @@ ShellRoot {
     root.eq("caminho antigo continua conhecido",
       String(G.legacySaveFile).indexOf("/omarchy-guest/ganja/") > 0, true)
 
+    // ---- o ritmo e preferencia, e ganha do manifest ------------------------
+    G.timeScale = 40            // o que o manifest teria posto
+    root.eq("sem escolha, vale o manifest", G.scale, 40)
+    root.eq("escolha ganha", G.setScale(400), 400)
+    root.eq("fora de faixa nao entra (0)", G.setScale(0), 400)
+    root.eq("fora de faixa nao entra (acima do TUI)", G.setScale(200000), 400)
+    root.eq("snapshot leva o ritmo", G.snapshot().time_scale, 400)
+
+    // ---- o acumulado nao morre com o teto da lista -------------------------
+    // Um save sem `lifetime` e um save de antes disto existir: o acumulado
+    // nasce somando a lista que esta la, que e a unica conta honesta possivel.
+    G.adopt({
+      current_plant: G.plant,
+      total_harvests: 2,
+      harvest_history: [
+        { strain_name: "A", weight_grams: 10, quality_score: 80, thc_percent: 20,
+          cbd_percent: 0.2, harvest_day: 96, completed_at: "2026-09-01T10:00:00Z" },
+        { strain_name: "B", weight_grams: 30, quality_score: 90, thc_percent: 22,
+          cbd_percent: 0.4, harvest_day: 96, completed_at: "2026-09-02T10:00:00Z" }
+      ]
+    }, true)
+    root.eq("acumulado semeado da lista: gramas", G.lifetime.grams, 40)
+    root.eq("acumulado semeado: recorde", G.lifetime.best_grams, 30)
+    root.eq("acumulado semeado: strain do recorde", G.lifetime.best_grams_strain, "B")
+    root.eq("acumulado semeado: melhor qualidade", G.lifetime.best_quality, 90)
+    root.eq("acumulado semeado: primeira colheita",
+      G.lifetime.first_at, "2026-09-01T10:00:00Z")
+
+    // E uma colheita nova soma em cima, sem depender da lista.
+    var antes = G.lifetime.grams
+    G.creditLifetime(G.lifetime, { strain_name: "C", weight_grams: 5, quality_score: 50,
+      thc_percent: 1, cbd_percent: 0, completed_at: "2026-09-03T10:00:00Z" })
+    root.eq("colheita nova soma", G.lifetime.grams, antes + 5)
+    root.eq("recorde nao cai por colheita pequena", G.lifetime.best_grams, 30)
+    root.eq("primeira colheita nao muda", G.lifetime.first_at, "2026-09-01T10:00:00Z")
+
     // ---- o save leva tudo isso de volta ------------------------------------
     G.setLang("pt")
     G.setWindowMode("large")

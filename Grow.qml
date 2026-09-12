@@ -32,6 +32,34 @@ Singleton {
   // dias em ~54 h de sessao - uma semana de uso normal.
   property real timeScale: 40
 
+  // O ritmo escolhido por quem usa, que ganha do manifest. Zero significa "nao
+  // escolhi nada, use o do manifest".
+  //
+  // Existe como preferencia salva em vez de um numero novo no manifest porque
+  // as duas coisas sao diferentes: o manifest e o default PUBLICADO, e uma
+  // semana por ciclo e uma decisao de projeto com argumento (SPEC 4b, o ritmo
+  // contemplativo). Que o autor goste de rapido nao e motivo para mudar o que
+  // chega na maquina dos outros - e motivo para o ritmo ser ajustavel.
+  //
+  // E separado de `timeScale` em vez de sobrescreve-lo por causa da ordem de
+  // carga: o manifest chega pelo Ganja.qml e o save chega por um Process
+  // assincrono, e qualquer um dos dois pode ser o ultimo. Com dois campos e uma
+  // precedencia explicita, a ordem deixa de importar.
+  property real userScale: 0
+  readonly property real scale: root.userScale > 0 ? root.userScale : root.timeScale
+
+  // Limites: abaixo de 1 a planta praticamente nao anda e o usuario acha que
+  // quebrou; acima do fator do TUI nao existe motivo nenhum, porque ali o turbo
+  // ja e o mesmo ritmo e diz que e.
+  function setScale(v) {
+    var n = Number(v)
+    if (!isFinite(n) || n < 1 || n > root.turboScale) return root.scale
+    root.userScale = n
+    root.lastTickMs = Date.now()   // o passo seguinte nao cobre o intervalo antigo
+    root.save()
+    return root.scale
+  }
+
   // O fator original do Ganja-TUI. La ele nao e um modo, e o unico ritmo: o
   // ciclo de 90 dias em 60 segundos.
   property real turboScale: 130000
@@ -64,6 +92,50 @@ Singleton {
   property var plant: null
   property var harvests: []
   property int totalHarvests: 0
+
+  // O que nunca morre.
+  //
+  // `harvests` guarda as 100 ultimas e descarta as mais velhas - um save que
+  // cresce para sempre e um vazamento com outro nome. Com o turbo ligado, que
+  // colhe a cada ~64 s, essas 100 rodam inteiras em uma hora e quarenta: sem
+  // isto aqui, duas horas de turbo apagariam todo o passado da planta, que e
+  // justamente o que o plugin diz valer ("a decima colheita tem dez historias
+  // atras dela").
+  //
+  // Entao a lista detalhada continua sendo as 100 ultimas, e o acumulado -
+  // gramas, medias, recordes, desde quando - fica aqui e nao depende dela.
+  // Custa seis numeros no save em vez de um arquivo que cresce.
+  property var lifetime: root.newLifetime()
+
+  function newLifetime() {
+    return {
+      grams: 0,
+      quality_sum: 0, thc_sum: 0, cbd_sum: 0,   // divididos por totalHarvests
+      best_grams: 0, best_grams_strain: "",
+      best_quality: 0, best_quality_strain: "",
+      first_at: "", last_at: ""
+    }
+  }
+
+  // Uma colheita entra no acumulado. Separado do `harvestPlant` porque a
+  // migracao de um save antigo chama isto em laco, sobre a lista que existe.
+  function creditLifetime(lt, r) {
+    lt.grams += r.weight_grams
+    lt.quality_sum += r.quality_score
+    lt.thc_sum += r.thc_percent
+    lt.cbd_sum += r.cbd_percent
+    if (r.weight_grams > lt.best_grams) {
+      lt.best_grams = r.weight_grams
+      lt.best_grams_strain = r.strain_name
+    }
+    if (r.quality_score > lt.best_quality) {
+      lt.best_quality = r.quality_score
+      lt.best_quality_strain = r.strain_name
+    }
+    if (lt.first_at === "") lt.first_at = r.completed_at
+    lt.last_at = r.completed_at
+    return lt
+  }
   property string visualMode: "Normal"
   property string lastTick: ""
 
@@ -260,7 +332,7 @@ Singleton {
     root.lastTickMs = now
 
     var beforeStage = root.plant.stage
-    var scale = root.turbo ? root.turboScale : root.timeScale
+    var scale = root.turbo ? root.turboScale : root.scale
     root.advance(root.plant, (delta / 1000.0 / 3600.0) * scale, false)
     root.publish()
 
@@ -523,6 +595,10 @@ Singleton {
       return
     }
 
+    // O acumulado primeiro: ele e o que sobrevive ao teto da lista.
+    var lt = root.lifetime ? JSON.parse(JSON.stringify(root.lifetime)) : root.newLifetime()
+    root.lifetime = root.creditLifetime(lt, result)
+
     var list = root.harvests.slice()
     list.push(result)
     // Cem colheitas e o teto. Um save que cresce para sempre e um vazamento com
@@ -666,6 +742,8 @@ Singleton {
       // roda sobre uma copia que o desligar joga fora - gravar seria gravar a
       // intencao de simular um descartavel no proximo boot.
       turbo: root.turbo,
+      time_scale: root.userScale,
+      lifetime: root.lifetime,
       // `paused` fica de fora do que o TUI entende de proposito: la o relogio e
       // de parede e nao existe "parado". Levar o save para o TUI com a planta
       // parada nao a deixa parada - o TUI vai andar, como sempre andou.
@@ -673,11 +751,35 @@ Singleton {
     }
   }
 
+  // O acumulado de um save que nao tinha acumulado.
+  //
+  // Somar a lista que esta ali e a unica conta honesta possivel: quem colheu 39
+  // vezes com o teto de 100 tem as 39 no arquivo, e o acumulado sai exato. Para
+  // quem passou das 100 o numero nasce menor que a verdade, e isso e melhor que
+  // nascer zero - e a partir dali cresce certo, que e o ponto.
+  function adoptLifetime(data) {
+    if (data.lifetime && typeof data.lifetime === "object") {
+      var lt = root.newLifetime()
+      for (var k in lt)
+        if (data.lifetime[k] !== undefined) lt[k] = data.lifetime[k]
+      return lt
+    }
+    var seed = root.newLifetime()
+    var list = Array.isArray(data.harvest_history) ? data.harvest_history : []
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i]
+      if (r && typeof r.weight_grams === "number") root.creditLifetime(seed, r)
+    }
+    return seed
+  }
+
   function adopt(data, fromDisk) {
     if (!data || !data.current_plant) return false
     root.plant = data.current_plant
     root.harvests = Array.isArray(data.harvest_history) ? data.harvest_history : []
     root.totalHarvests = data.total_harvests || 0
+    root.userScale = Number(data.time_scale) > 0 ? Number(data.time_scale) : 0
+    root.lifetime = root.adoptLifetime(data)
     root.visualMode = data.visual_mode || "Normal"
     root.autoCare = data.auto_care === true
     root.windowMode = root.canonWindowMode(data.window_mode) || "full"

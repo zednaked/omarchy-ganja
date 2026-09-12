@@ -126,8 +126,9 @@ omarchy-shell ganja mode
 omarchy-shell ganja auto
 omarchy-shell ganja turbo
 omarchy-shell ganja pause           # alterna; stop e start forçam um lado
-omarchy-shell ganja lang pt         # ou en, ou vazio para alternar
-omarchy-shell ganja window medium   # ou vazio para ciclar
+omarchy-shell ganja lang pt         # ou en, ou "" para alternar
+omarchy-shell ganja scale 400       # o ritmo, ou "" para só consultar
+omarchy-shell ganja window medium   # ou "" para ciclar
 omarchy-shell ganja status     # "Purple Kush · Floração · dia 61 · água 68% · npk 72%"
 ```
 
@@ -209,7 +210,7 @@ lado a lado com o que você está fazendo, em vez de abrir e fechar.
 
 O modo escolhido vai para o save — preferência que volta ao padrão a cada boot
 não é preferência. Isso vale para tudo o que você mexe aqui: idioma, cores,
-tamanho de janela, automático, parada e turbo. As duas exceções são a
+tamanho de janela, automático, parada, turbo e o ritmo (`ganja scale`). As duas exceções são a
 demonstração (que não pode, ver abaixo) e a aba de colheitas, que não é ajuste e
 sim onde você estava olhando — a planta é o motivo da janela existir, então abrir
 a sala mostra a planta.
@@ -267,18 +268,29 @@ O TUI roda a 130000x — o ciclo inteiro de 90 dias em 60 segundos. Isso está
 certo para algo que você abre, olha crescer e fecha; numa barra significaria uma
 colheita por minuto e um ícone piscando sem parar.
 
-Aqui o padrão é **`timeScale` 40**: um ciclo completo em ~54 horas de sessão, ou
-seja **cerca de uma semana** de uso normal. Abrir a barra na quarta mostra uma
-planta diferente da de segunda, que é o ponto inteiro de acompanhar uma planta.
+O **padrão publicado é `timeScale` 40**: um ciclo completo em ~57 horas de
+sessão, ou seja **cerca de uma semana** de uso normal. Abrir a barra na quarta
+mostra uma planta diferente da de segunda, que é o ponto inteiro de acompanhar
+uma planta.
 
-Para mudar, edite `timeScale` no `manifest.json`:
+**Mas o ritmo é seu, e fica salvo:**
 
-| ciclo dura | `timeScale` |
+```sh
+omarchy-shell ganja scale 400     # um ciclo por dia de trabalho
+omarchy-shell ganja scale ""      # quanto está agora?
+```
+
+| ciclo dura | ritmo |
 |---|---|
-| 60 s (o TUI) | 130000 |
-| 1 dia de sessão | 90 |
-| ~1 semana de uso (padrão) | 40 |
-| ~1 mês de uso | 10 |
+| 64 s | 130000 — isto é o turbo, e ele avisa em vermelho |
+| ~1,2 h de sessão | 2000 |
+| ~5,8 h ≈ um dia de trabalho | 400 |
+| ~57 h ≈ uma semana (padrão publicado) | 40 |
+| ~9 dias de sessão | 10 |
+
+A sua escolha ganha do `manifest.json` e mora no save, então o padrão do plugin
+continua sendo o que é para quem instala: uma planta que se acompanha, não uma
+que se assiste.
 
 `turboScale` no mesmo arquivo é o fator do `Shift+F`, e o padrão é o 130000 do
 TUI.
@@ -300,10 +312,20 @@ Colheu, planta outra, automaticamente — dez dias depois de ficar pronta, como 
 `auto_harvest` do TUI, só que aqui é o comportamento e não uma opção. `h` colhe
 antes, se você não quiser esperar.
 
-O que não se perde é o histórico. `Tab` abre a lista: strain, dia, peso,
-qualidade, THC/CBD e quantos sustos a planta levou. É o que separa uma planta
-bonita de algo que acumula — a décima colheita tem dez histórias atrás dela. O
-arquivo guarda as 100 últimas e descarta as mais velhas.
+O que não se perde é o histórico. `Tab` abre, e ele são duas coisas:
+
+- **o acumulado, que não expira** — quantas colheitas, quantos gramas no total,
+  qualidade e canabinoides médios, o seu recorde de peso e a sua melhor
+  qualidade (com o strain que fez), e a data da primeira;
+- **as 100 últimas em detalhe** — strain, dia, peso, qualidade, THC/CBD e
+  quantos sustos a planta levou.
+
+O arquivo guarda 100 registros porque um save que cresce para sempre é um
+vazamento com outro nome. O acumulado é separado, seis números atualizados em
+cada colheita, e é ele que torna um ritmo rápido seguro: em turbo, as 100
+rodam inteiras em menos de duas horas, e nada do que elas somaram se perde. É o
+que separa uma planta bonita de algo que acumula — a décima colheita tem dez
+histórias atrás dela, e a centésima ainda sabe da primeira.
 
 ---
 

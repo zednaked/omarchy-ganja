@@ -199,6 +199,46 @@ As exceções precisam de um motivo que não seja "é arriscado" — a demonstra
 tem (não é estado), e a aba de colheitas tem (não é ajuste, é onde a pessoa
 estava olhando, e a planta é o motivo da janela existir).
 
+### 4d. O ritmo é preferência do usuário, não número do manifest — 12/09/2026
+
+O `timeScale` 40 da seção 4b continua sendo o **default publicado**, e continua
+com o argumento inteiro: uma planta que se acompanha, não uma que se assiste.
+
+O que mudou é que ele deixou de ser a única palavra. `ganja scale <n>` grava o
+ritmo no save, e o save ganha do manifest. A implementação usa dois campos
+(`timeScale`, do manifest, e `userScale`, do save) com precedência explícita, e
+não um sobrescrevendo o outro, porque a ordem de carga não é garantida: o
+manifest chega pelo `Ganja.qml` e o save chega por um `Process` assíncrono.
+
+A alternativa era trocar o 40 por 400 no `manifest.json`, e ela está descartada
+por um motivo que vale para qualquer plugin publicado: **o gosto do autor não é
+o default de quem instala.** O autor roda rápido; o default continua sendo o
+ritmo contemplativo, e quem quiser o dele tem um comando.
+
+### 4e. O acumulado das colheitas não expira — 12/09/2026
+
+O teto de 100 colheitas da seção 4 continua (um save que cresce para sempre é um
+vazamento com outro nome). Mas com o turbo salvo e ritmos rápidos disponíveis,
+esse teto virou uma perda real: a 130000x sai uma colheita a cada ~64 s, e as
+100 rodam inteiras em 1h46. Duas horas apagariam todo o passado da planta — que
+é justamente o que a seção 4 diz ser o valor do plugin.
+
+Então o histórico passou a ser duas coisas:
+
+- **`harvest_history`**, as 100 últimas em detalhe, como antes;
+- **`lifetime`**, seis números que nunca morrem: gramas somadas, somas de
+  qualidade e canabinoides (divididas pelo contador vitalício para dar médias),
+  recorde de peso e melhor qualidade com os strains que os fizeram, e a data da
+  primeira colheita.
+
+Isso também consertou uma linha que já mentia: o resumo somava a lista para
+dizer "g no total" ao lado de um contador vitalício de colheitas — duas unidades
+diferentes na mesma frase, e a errada era a que impressionava.
+
+Save antigo sem `lifetime`: o acumulado nasce **somando a lista que está lá**.
+Para quem nunca passou de 100 o número sai exato; para quem passou, nasce menor
+que a verdade, e isso é melhor que nascer zero.
+
 **E o 130000x não some — vira botão.** Segurar `f` no overlay roda no fator
 original e a planta cresce na sua frente, do broto à colheita, em 60 segundos.
 É o modo demonstração, e é o que se grava para mostrar o plugin aos outros.

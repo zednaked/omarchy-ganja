@@ -150,6 +150,9 @@ var STRINGS = {
     "h.grams": "{0} g",
     "h.quality": "{0}% quality",
     "h.cannabinoids": "THC {0}%  CBD {1}%",
+    "h.records": "record {0} g ({1})  ·  best quality {2}% ({3})",
+    "h.since": "since {0}",
+    "h.showingLast": "the {0} most recent, of {1}",
     "h.noStress": "no scares",
     "h.stressOne": "{0} scare",
     "h.stressMany": "{0} scares",
@@ -187,6 +190,7 @@ var STRINGS = {
     "ipc.turboOn": "on · 130000x on the plant",
     "ipc.paused": "stopped",
     "ipc.running": "running",
+    "ipc.cycle": "a full cycle in {0} h of session",
     "ipc.sizes": "sizes: {0}",
     "ipc.languages": "languages: {0}"
   },
@@ -281,6 +285,9 @@ var STRINGS = {
     "h.grams": "{0} g",
     "h.quality": "{0}% qualidade",
     "h.cannabinoids": "THC {0}%  CBD {1}%",
+    "h.records": "recorde {0} g ({1})  ·  melhor qualidade {2}% ({3})",
+    "h.since": "desde {0}",
+    "h.showingLast": "as {0} mais recentes, de {1}",
     "h.noStress": "sem sustos",
     "h.stressOne": "{0} susto",
     "h.stressMany": "{0} sustos",
@@ -315,6 +322,7 @@ var STRINGS = {
     "ipc.turboOn": "ligado · 130000x na planta",
     "ipc.paused": "parada",
     "ipc.running": "andando",
+    "ipc.cycle": "um ciclo completo em {0} h de sessão",
     "ipc.sizes": "tamanhos: {0}",
     "ipc.languages": "idiomas: {0}"
   }

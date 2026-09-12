@@ -641,16 +641,45 @@ Item {
       anchors.horizontalCenter: parent.horizontalCenter
       spacing: 14
 
+      // Tres linhas, e as duas primeiras nao morrem com o teto da lista: elas
+      // saem do acumulado vitalicio (ver `totals` no Ganja.qml). A terceira e
+      // sobre a lista, e so aparece quando a lista ja e menor que o passado.
       Text {
+        width: parent.width
+        wrapMode: Text.WordWrap
         text: Grow.totalHarvests === 0
           ? Grow.t("h.none")
           : Grow.plural(Grow.totalHarvests, "h.countOne", "h.countMany")
             + "  ·  " + Grow.tf("h.totals", Grow.num(room.ui.totals.weight),
               Math.round(room.ui.totals.quality), Grow.num(room.ui.totals.thc),
               Grow.num(room.ui.totals.cbd))
+            + (room.ui.firstHarvestWhen === ""
+              ? "" : "  ·  " + Grow.tf("h.since", room.ui.firstHarvestWhen))
         color: room.ui.inkBright
         font.family: room.ui.mono
         font.pixelSize: 13
+      }
+
+      Text {
+        visible: room.ui.totals.records === true
+        width: parent.width
+        wrapMode: Text.WordWrap
+        text: Grow.tf("h.records",
+          Grow.num(room.ui.totals.bestGrams), room.ui.totals.bestGramsStrain,
+          Math.round(room.ui.totals.bestQuality), room.ui.totals.bestQualityStrain)
+        color: "#6fbf73"
+        font.family: room.ui.mono
+        font.pixelSize: 12
+      }
+
+      Text {
+        // "as 100 mais recentes, de 143" - sem isto, a lista parecia ser tudo
+        // que existiu, e o numero de cima nao fechava com o que se ve embaixo.
+        visible: Grow.totalHarvests > Grow.harvests.length
+        text: Grow.tf("h.showingLast", Grow.harvests.length, Grow.totalHarvests)
+        color: room.ui.inkDim
+        font.family: room.ui.mono
+        font.pixelSize: 11
       }
 
       Text {

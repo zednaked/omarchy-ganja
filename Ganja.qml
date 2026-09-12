@@ -161,6 +161,14 @@ Item {
         return Grow.tf("ipc.sizes", Grow.windowModes.join(", "))
       return Grow.setWindowMode(mode)
     }
+    // O ritmo, em horas de jogo por hora real. Sem argumento, responde o atual.
+    function scale(value: string): string {
+      if (value === "") return "" + Grow.scale + "x"
+      var n = Grow.setScale(value)
+      // 2304 h = os 96 dias que a planta leva da muda a colheita automatica.
+      // A virgula decimal segue o idioma, como todo numero aqui.
+      return "" + n + "x  ·  " + Grow.tf("ipc.cycle", Grow.num(2304 / n))
+    }
     function lang(code: string): string {
       if (code === "") return Grow.cycleLang()
       if (!I18n.known(code)) return Grow.tf("ipc.languages", I18n.LANGS.join(", "))
@@ -455,14 +463,33 @@ Item {
     return out
   }
 
+  // Os totais saem do acumulado vitalicio, e nao da lista.
+  //
+  // Somar a lista era o que estava aqui, e a soma mentia assim que o teto de 100
+  // cortava a primeira colheita: a mesma frase dizia "143 colheitas" (contador
+  // vitalicio) e "2867 g no total" (as 100 que sobraram no arquivo). Duas
+  // unidades diferentes na mesma linha, e a errada era a que impressionava.
   readonly property var totals: {
-    var h = Grow.harvests
-    if (h.length === 0) return { weight: 0, quality: 0, thc: 0, cbd: 0 }
-    var w = 0, q = 0, t = 0, c = 0
-    for (var i = 0; i < h.length; i++) {
-      w += h[i].weight_grams; q += h[i].quality_score
-      t += h[i].thc_percent; c += h[i].cbd_percent
+    var lt = Grow.lifetime
+    var n = Grow.totalHarvests
+    if (!lt || n === 0) return { weight: 0, quality: 0, thc: 0, cbd: 0, records: false }
+    return {
+      weight: lt.grams,
+      quality: lt.quality_sum / n,
+      thc: lt.thc_sum / n,
+      cbd: lt.cbd_sum / n,
+      bestGrams: lt.best_grams, bestGramsStrain: lt.best_grams_strain,
+      bestQuality: lt.best_quality, bestQualityStrain: lt.best_quality_strain,
+      firstAt: lt.first_at,
+      records: lt.best_grams > 0
     }
-    return { weight: w, quality: q / h.length, thc: t / h.length, cbd: c / h.length }
+  }
+
+  // "desde 12/09" - a data da primeira colheita, que e a idade do grow todo.
+  readonly property string firstHarvestWhen: {
+    var at = root.totals.firstAt
+    if (!at) return ""
+    var d = new Date(at)
+    return isNaN(d.getTime()) ? "" : Qt.formatDateTime(d, Grow.t("h.dateFormat"))
   }
 }

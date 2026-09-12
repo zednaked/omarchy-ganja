@@ -108,8 +108,9 @@ omarchy-shell ganja auto
 omarchy-shell ganja mode
 omarchy-shell ganja turbo
 omarchy-shell ganja pause           # toggles; stop and start force one side
-omarchy-shell ganja lang en         # or pt, or empty to toggle
-omarchy-shell ganja window medium   # or empty to cycle
+omarchy-shell ganja lang en         # or pt, or "" to toggle
+omarchy-shell ganja scale 400       # rhythm, or "" to read it back
+omarchy-shell ganja window medium   # or "" to cycle
 omarchy-shell ganja status
 ```
 
@@ -185,6 +186,7 @@ setting, it is a question asked again.
 | automatic care (`a`) | yes |
 | **stopped** (`p`, right click) | yes |
 | **turbo** (`Shift+F`) | yes — it survives closing the room and restarting the shell |
+| **the rhythm** (`ganja scale`) | yes, and it wins over the manifest |
 | the plant, the harvests, the hours | yes, that is the point |
 | demo (`f`) | **no**, and it cannot be |
 | the harvests tab (`Tab`) | no, on purpose |
@@ -214,18 +216,29 @@ The TUI runs at 130000x — the whole 90-day cycle in 60 seconds. That is right
 for something you open, watch grow and close; in a bar it would mean a harvest
 per minute and an icon blinking forever.
 
-Here the default is **`timeScale` 40**: a full cycle in ~54 hours of session, or
-**about a week** of normal use. Opening the bar on Wednesday shows a different
-plant from Monday's, which is the entire point of following a plant.
+The **shipped default is `timeScale` 40**: a full cycle in ~57 hours of session,
+or **about a week** of normal use. Opening the bar on Wednesday shows a
+different plant from Monday's, which is the entire point of following a plant.
 
-| cycle lasts | `timeScale` |
+**The rhythm is yours, though, and it is saved:**
+
+```sh
+omarchy-shell ganja scale 400     # a cycle per working day
+omarchy-shell ganja scale ""      # what is it now?
+```
+
+| cycle lasts | scale |
 |---|---|
-| 60 s (the TUI) | 130000 |
-| 1 day of session | 90 |
-| ~1 week of use (default) | 40 |
-| ~1 month of use | 10 |
+| 64 s | 130000 — this is turbo, and it says so in red |
+| ~1.2 h of session | 2000 |
+| ~5.8 h ≈ a working day | 400 |
+| ~57 h ≈ a week (shipped default) | 40 |
+| ~9 days of session | 10 |
 
-`timeScale`, `turboScale` and `careScale` live in `manifest.json`.
+Your choice wins over the manifest and lives in the save, so the plugin's
+default stays what it is for everyone else: a plant you follow, not a plant you
+watch. `timeScale` (the default), `turboScale` and `careScale` live in
+`manifest.json`.
 
 **Time only moves while the shell runs.** Machine off, plant paused. You come
 back on Monday and it is where you left it on Friday, not dead of thirst. The
@@ -244,10 +257,20 @@ Harvested, another one is planted, automatically — ten days after it is ready,
 like the TUI's `auto_harvest`, except here it is the behavior and not an option.
 `h` harvests early.
 
-What is not lost is the history. `Tab` opens the list: strain, day, weight,
-quality, THC/CBD and how many scares the plant took. It is what separates a
-pretty plant from something that accumulates — the tenth harvest has ten
-stories behind it. The file keeps the last 100.
+What is not lost is the history. `Tab` opens it, and it is two things:
+
+- **the running totals, which never expire** — how many harvests, grams in
+  total, average quality and cannabinoids, your record harvest and your best
+  quality (with the strain that did it), and the date of the first one;
+- **the last 100 harvests in detail** — strain, day, weight, quality, THC/CBD
+  and how many scares the plant took.
+
+The file keeps 100 records because a save that grows forever is a leak with
+another name. The totals are separate, six numbers updated at each harvest, and
+that is what makes a fast rhythm safe: at turbo, the 100 records turn over in
+under two hours, and none of what they added up to is lost. It is what separates
+a pretty plant from something that accumulates — the tenth harvest has ten
+stories behind it, and the hundredth still knows about the first.
 
 ---
 
