@@ -29,9 +29,12 @@ jobs:
       - name: os 64 frames contra as fixtures
         run: make diff
 
-      # Sem a JetBrainsMono Nerd Font instalada o teste se declara "pulado" e
-      # sai 0 de propósito: ele confere a fonte DA MÁQUINA, e a máquina que
-      # importa é a de quem usa, não a do runner.
+      # O runner não tem Nerd Font, e `fc-match` nunca diz "não tenho" — devolve
+      # a DejaVu Sans, contra a qual os oito glifos "faltam" todos. O teste
+      # reconhece isso e se declara pulado: ele confere a fonte DA MÁQUINA, e a
+      # máquina que importa é a de quem usa, não a do runner. (A primeira versão
+      # deste arquivo afirmava que o teste já fazia isso. Não fazia, e o CI
+      # reprovou na primeira execução dizendo exatamente isso.)
       - name: os glifos da barra contra a fonte instalada
         run: make glyphs
 

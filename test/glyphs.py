@@ -53,12 +53,27 @@ def barwidget_codepoints(path="BarWidget.qml"):
 
 
 def font_path():
+    """O arquivo que o fontconfig entrega para a fonte que a barra pede.
+
+    `fc-match` NUNCA diz "nao tenho": ele devolve o que achou mais parecido, e
+    numa maquina sem Nerd Font isso e a DejaVu Sans. Conferir os glifos da barra
+    contra a DejaVu reprova os oito de uma vez, e a conclusao certa dali nao e
+    "os codepoints estao errados" - e "a fonte nao esta instalada". Sao coisas
+    diferentes e so uma delas e um bug do plugin.
+    """
     if len(sys.argv) > 1:
         return sys.argv[1]
-    # A mesma pergunta que o fontconfig responde para a barra.
-    out = subprocess.run(["fc-match", "-f", "%{file}", "JetBrainsMono Nerd Font"],
+    out = subprocess.run(["fc-match", "-f", "%{file}|%{family}", "JetBrainsMono Nerd Font"],
                          capture_output=True, text=True)
-    return out.stdout.strip()
+    path, _, family = out.stdout.strip().partition("|")
+    if not path:
+        print("pulado: fc-match nao respondeu")
+        return ""
+    if "nerd" not in (path + family).lower():
+        print(f"pulado: a barra pede uma Nerd Font e o fontconfig entregou "
+              f"{family or path} - nada a conferir sem a fonte instalada")
+        return ""
+    return path
 
 
 def main():
@@ -70,8 +85,7 @@ def main():
 
     path = font_path()
     if not path:
-        print("pulado: fc-match nao achou a fonte")
-        return 0
+        return 0        # font_path() ja disse por que
 
     font = TTFont(path)
     cmap = font.getBestCmap()
