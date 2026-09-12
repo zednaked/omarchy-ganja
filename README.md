@@ -283,12 +283,28 @@ plugin's own file. Moving a plant between the two is a file copy:
 cp ~/.local/share/zed.ganja/save.json ~/.local/share/ganjatui/save.json
 ```
 
-Writes are always atomic (`.tmp` in the same directory, then `mv`), and the
-`.tmp` carries the PID so two shell instances cannot stitch two JSONs into one
-file. Opening the overlay re-reads the save: if the one on disk is newer, it
-wins. Last write wins, no locks — and that is also why there is no "reload" key:
-the only case a key would cover is the file changing while the room is already
-open, and closing and opening does the same thing.
+Every read and write goes through `save.sh`, the one place in this plugin that
+touches the disk. It is invoked as `/bin/sh save.sh <mode> <paths…>` with a
+cleared environment, paths as **arguments** rather than interpolated into shell
+source, a byte cap and a deadline on anything that can block, and these checks
+before it acts: not a symlink, a regular file (which rules out FIFOs, sockets
+and devices), owned by us, and within the cap. Writes go to a `mktemp` file
+(random name, created with `O_EXCL`, mode 600), get `sync`ed, and are moved into
+place — `mv` replaces a symlink rather than writing through it, and the rename
+is atomic.
+
+That shape came out of the marketplace security review
+([#6530](https://github.com/omacom/omarchy-plugin-marketplace/issues/6530)),
+which found the earlier version guilty of three things worth fixing: paths
+interpolated into shell source, an unbounded read (a huge file or a FIFO in
+place of the save could exhaust or hang the shell process the whole bar lives
+in), and a predictable `save.json.$$.tmp` that a pre-positioned symlink could
+redirect. `make hostile` is the test that throws all of that at it.
+
+Opening the overlay re-reads the save: if the one on disk is newer, it wins.
+Last write wins, no locks — and that is also why there is no "reload" key: the
+only case a key would cover is the file changing while the room is already open,
+and closing and opening does the same thing.
 
 **Careful, and this is behavior and not a bug:** opening `ganjatui` for a minute
 with the save copied over burns a whole cycle of the plant. The TUI runs at
@@ -326,6 +342,7 @@ make check     # the LCG and 64-bit division against Node's BigInt
 make diff      # today's output against the fixtures in test/frames/
 make verify    # the fixtures against the QML JS engine
 make state     # the real Grow.qml: stopping, language, what the save carries
+make hostile   # FIFO, symlink, oversized save and planted temp file vs save.sh
 make glyphs    # the eight bar icons against the installed font
 ```
 
@@ -383,6 +400,7 @@ Room.qml         what you see inside, identical in both windows
 Art.js           port of ascii/art.rs - SimpleRng, PlantStructure, render
 Palette.js       port of ui/colors.rs - the four palettes
 I18n.js          every screen string, in both languages, plus the strain vocabulary
+save.sh          the only code that touches the disk - bounded, checked, atomic
 Strains.js       generated from strains.json by `make strains`
 test/            frame fixtures, the Node harness, the QML ones, the state one
 SPEC.md          the decisions and why they are what they are (Portuguese)

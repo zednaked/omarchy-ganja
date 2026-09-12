@@ -84,6 +84,20 @@ Singleton {
   readonly property string legacySaveFile: Quickshell.env("HOME")
     + "/.local/share/omarchy-guest/ganja/save.json"
 
+  // O unico lugar que toca o disco e o save.sh ao lado deste arquivo, sempre
+  // chamado como `/bin/sh save.sh <modo> <caminhos...>`. Os caminhos vao como
+  // ARGUMENTOS e nunca dentro do texto do script - era isso que a revisao de
+  // seguranca do marketplace (issue #6530) apontava primeiro, e o texto
+  // constante nao tem superficie de citacao nenhuma.
+  //
+  // Ler os dois limites, os cheques e o porque de cada um: save.sh.
+  readonly property string helper: String(Qt.resolvedUrl("save.sh")).replace("file://", "")
+
+  // Ambiente fechado, do lado do QML: o filho nao herda nada do shell da barra.
+  // O PATH minimo esta aqui E dentro do script, de proposito - um dos dois
+  // sozinho seria suficiente, e os dois juntos custam uma linha.
+  readonly property var helperEnv: ({ "PATH": "/usr/bin:/bin" })
+
   // ---- estado --------------------------------------------------------------
 
   // A planta, no formato do serde de src/domain/plant.rs. E a fonte da verdade;
@@ -815,11 +829,9 @@ Singleton {
     // marca, a unica forma de saber seria um segundo processo perguntando ao
     // disco - e um boot que grava sempre, para o caso de ter migrado, cobraria
     // de todo mundo uma escrita que interessa a uma pessoa uma vez na vida.
-    command: ["sh", "-c",
-      "d=\"" + root.dir + "\"; l=\"" + root.legacySaveFile + "\"; " +
-      "find \"$d\" -maxdepth 1 -name 'save.json.*.tmp' -mmin +5 -delete 2>/dev/null; " +
-      "if [ -f \"$d/save.json\" ]; then cat \"$d/save.json\"; " +
-      "elif [ -f \"$l\" ]; then printf '#legacy\\n'; cat \"$l\"; fi"]
+    command: ["/bin/sh", root.helper, "read", root.dir, root.legacySaveFile]
+    clearEnvironment: true
+    environment: root.helperEnv
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -861,7 +873,10 @@ Singleton {
   // linha na tabela de teclas do README.
   Process {
     id: rereader
-    command: ["sh", "-c", "cat \"" + root.saveFile + "\" 2>/dev/null"]
+    // Sem o caminho antigo: migrar e coisa de uma vez, na carga.
+    command: ["/bin/sh", root.helper, "read", root.dir]
+    clearEnvironment: true
+    environment: root.helperEnv
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -888,12 +903,14 @@ Singleton {
   Process {
     id: writer
     stdinEnabled: true
-    // O `.tmp` leva o PID do shell no nome: duas instancias do shell gravando
-    // ao mesmo tempo num `save.json.tmp` compartilhado produzem um arquivo
-    // costurado de dois JSONs, que e pior que qualquer corrida que o mv evita.
-    command: ["sh", "-c",
-      "d=\"" + root.dir + "\"; mkdir -p \"$d\"; t=\"$d/save.json.$$.tmp\"; " +
-      "cat > \"$t\" && mv -f \"$t\" \"$d/save.json\" || rm -f \"$t\""]
+    // O temporario agora tem nome aleatorio, criado por `mktemp` com O_EXCL -
+    // o `save.json.$$.tmp` de antes era previsivel, e um symlink pre-posicionado
+    // ali fazia a gravacao sair em outro lugar. Era o segundo achado da revisao
+    // de seguranca. O nome aleatorio tambem resolve o que o PID resolvia: duas
+    // instancias do shell nunca escolhem o mesmo arquivo.
+    command: ["/bin/sh", root.helper, "write", root.dir]
+    clearEnvironment: true
+    environment: root.helperEnv
     onStarted: {
       writer.write(root.pending)
       // Isto e o que fecha o stdin, e por isso `flush()` reabre antes de cada
@@ -930,11 +947,12 @@ Singleton {
     if (root.loaded && root.plant && !root.fast) {
       // Sincrono de proposito: o processo esta indo embora e um Process
       // assincrono nao sobrevive para escrever.
+      // `writenow` em vez de `write` porque processo destacado nao tem stdin
+      // para receber o conteudo; ele vai como argumento. O resto - mktemp, os
+      // cheques, o sync, o mv - e exatamente o mesmo caminho do escritor normal,
+      // porque duplicar a gravacao e como um dos dois lados fica para tras.
       var snap = JSON.stringify(root.snapshot())
-      Quickshell.execDetached(["sh", "-c",
-        "d=\"" + root.dir + "\"; mkdir -p \"$d\"; t=\"$d/save.json.$$.tmp\"; " +
-        "printf '%s' \"$1\" > \"$t\" && mv -f \"$t\" \"$d/save.json\" || rm -f \"$t\"",
-        "sh", snap])
+      Quickshell.execDetached(["/bin/sh", root.helper, "writenow", root.dir, snap])
     }
   }
 }

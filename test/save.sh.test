@@ -1,0 +1,131 @@
+# Os casos que a revisao de seguranca do marketplace apontou (issue #6530),
+# cada um como um cenario que o save.sh tem que sobreviver.
+#
+#   sh test/save.sh.test
+#
+# Nao e teste de unidade do formato - disso cuidam o make state e o make diff.
+# E teste de hostilidade: FIFO no lugar do arquivo, symlink apontando para fora,
+# save gigante, temporario pre-posicionado, diretorio trocado por link. Tudo com
+# HOME de mentira num diretorio temporario, como o resto dos testes.
+set -u
+
+raiz=$(cd "$(dirname "$0")/.." && pwd)
+helper="$raiz/save.sh"
+
+ok=0
+mau=0
+
+passou() { ok=$((ok + 1)); echo "OK:     $1"; }
+falhou() { mau=$((mau + 1)); echo "FALHOU: $1"; }
+
+verifica() { # <descricao> <esperado> <obtido>
+  if [ "$2" = "$3" ]; then passou "$1 ($3)"; else falhou "$1: esperado [$2], obtido [$3]"; fi
+}
+
+palco=$(mktemp -d)
+trap 'rm -rf "$palco"' EXIT
+d="$palco/dados"
+
+json='{"current_plant":{"strain_name":"Purple Kush"},"total_harvests":7}'
+
+# ---- o caminho normal, primeiro: se isto nao funcionar, o resto nao importa --
+printf '%s' "$json" | sh "$helper" write "$d"
+verifica "grava e le de volta" "$json" "$(sh "$helper" read "$d")"
+verifica "modo do arquivo e 600" "600" "$(stat -c %a "$d/save.json")"
+verifica "nao sobrou temporario" "0" "$(find "$d" -name 'save.json.*' | wc -l)"
+
+# ---- FIFO no lugar do save: tem que recusar, e nao travar -------------------
+# Era o primeiro achado: `cat` num FIFO espera para sempre, e quem esperava era
+# o coletor de stdout do shell inteiro.
+rm -f "$d/save.json"
+mkfifo "$d/save.json"
+inicio=$(date +%s)
+saida=$(sh "$helper" read "$d")
+fim=$(date +%s)
+verifica "FIFO nao devolve nada" "" "$saida"
+gastou=$((fim - inicio))
+if [ "$gastou" -le 6 ]; then passou "FIFO nao trava (${gastou}s)"; else falhou "FIFO travou ${gastou}s"; fi
+rm -f "$d/save.json"
+
+# ---- symlink no lugar do save ----------------------------------------------
+alvo="$palco/segredo.txt"
+echo "conteudo que nao e nosso" > "$alvo"
+ln -s "$alvo" "$d/save.json"
+verifica "symlink nao e lido" "" "$(sh "$helper" read "$d")"
+
+# E gravar por cima do symlink substitui o LINK, nao o alvo.
+printf '%s' "$json" | sh "$helper" write "$d"
+verifica "gravar nao seguiu o symlink" "conteudo que nao e nosso" "$(cat "$alvo")"
+# Sem `stat -c %F`: ele responde no idioma do sistema ("arquivo comum" num
+# sistema em portugues), e teste que depende de locale falha na maquina do outro.
+if [ -f "$d/save.json" ] && [ ! -L "$d/save.json" ]; then
+  passou "o save novo e arquivo regular, nao link"
+else
+  falhou "o save novo nao e arquivo regular"
+fi
+verifica "e tem o nosso conteudo" "$json" "$(cat "$d/save.json")"
+
+# ---- save maior que o teto -------------------------------------------------
+# 2 MiB de lixo: acima do MAX de 1 MiB, tem que ser recusado inteiro em vez de
+# truncado - JSON truncado pareceria save corrompido e o plugin comecaria de
+# novo, que e perder a planta.
+rm -f "$d/save.json"
+dd if=/dev/zero of="$d/save.json" bs=1024 count=2048 status=none
+verifica "save gigante e recusado" "" "$(sh "$helper" read "$d")"
+
+# ---- temporario pre-posicionado --------------------------------------------
+# Era o segundo achado: o nome era `save.json.$$.tmp`, adivinhavel. Agora e
+# mktemp, e nem um symlink com o nome antigo muda nada.
+rm -f "$d/save.json"
+ln -s "$alvo" "$d/save.json.99999.tmp"
+printf '%s' "$json" | sh "$helper" write "$d"
+verifica "temporario plantado nao foi usado" "conteudo que nao e nosso" "$(cat "$alvo")"
+verifica "gravou mesmo assim" "$json" "$(sh "$helper" read "$d")"
+rm -f "$d/save.json.99999.tmp"
+
+# ---- diretorio trocado por symlink -----------------------------------------
+d2="$palco/dados2"
+ln -s "$palco/fora" "$d2"
+mkdir -p "$palco/fora"
+printf '%s' "$json" | sh "$helper" write "$d2"
+verifica "diretorio-symlink e recusado" "0" "$(find "$palco/fora" -name save.json | wc -l)"
+
+# ---- limpeza de temporario velho -------------------------------------------
+# O de agora fica (pode ser gravacao em curso de outra instancia); o de uma hora
+# atras sai.
+rm -rf "$d"; mkdir -p "$d"
+printf '%s' "$json" | sh "$helper" write "$d"
+: > "$d/save.json.antigo"
+touch -d '-1 hour' "$d/save.json.antigo" 2>/dev/null || touch -t 202601010000 "$d/save.json.antigo"
+: > "$d/save.json.agora"
+sh "$helper" read "$d" >/dev/null
+verifica "temporario velho e apagado" "0" "$(find "$d" -name 'save.json.antigo' | wc -l)"
+verifica "temporario de agora sobrevive" "1" "$(find "$d" -name 'save.json.agora' | wc -l)"
+verifica "e o save continua la" "$json" "$(cat "$d/save.json")"
+
+# ---- writenow, o caminho da saida do shell ---------------------------------
+rm -rf "$d"
+sh "$helper" writenow "$d" "$json"
+verifica "writenow grava" "$json" "$(sh "$helper" read "$d")"
+
+# ---- migracao do caminho antigo -------------------------------------------
+legado="$palco/antigo/save.json"
+mkdir -p "$(dirname "$legado")"
+printf '%s' "$json" > "$legado"
+rm -rf "$d"; mkdir -p "$d"
+verifica "sem save novo, le o antigo com a marca" "#legacy
+$json" "$(sh "$helper" read "$d" "$legado")"
+printf '%s' "$json" | sh "$helper" write "$d"
+verifica "com save novo, o antigo e ignorado" "$json" "$(sh "$helper" read "$d" "$legado")"
+
+# ---- modo desconhecido -----------------------------------------------------
+sh "$helper" xablau "$d" 2>/dev/null
+verifica "modo desconhecido sai com 2" "2" "$?"
+
+echo
+if [ "$mau" -eq 0 ]; then
+  echo "OK: $ok verificacoes de save.sh"
+else
+  echo "FALHOU: $mau de $((ok + mau))"
+  exit 1
+fi

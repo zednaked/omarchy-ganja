@@ -339,9 +339,24 @@ cópia de arquivo:
 cp ~/.local/share/zed.ganja/save.json ~/.local/share/ganjatui/save.json
 ```
 
-Escrita é sempre atômica (`.tmp` no mesmo diretório, depois `mv`), e o `.tmp`
-leva o PID no nome para que duas instâncias do shell não costurem dois JSONs no
-mesmo arquivo. Abrir o overlay relê o save: se o do disco for mais novo, ele
+Toda leitura e toda escrita passam pelo `save.sh`, o único lugar deste plugin
+que toca o disco. Ele é chamado como `/bin/sh save.sh <modo> <caminhos…>`, com
+ambiente limpo, os caminhos como **argumentos** em vez de interpolados no texto
+do shell, teto de bytes e prazo em tudo que pode bloquear, e estes cheques antes
+de agir: não é symlink, é arquivo regular (o que descarta FIFO, socket e
+dispositivo), é nosso, e cabe no teto. A escrita vai para um `mktemp` (nome
+aleatório, criado com `O_EXCL`, modo 600), passa por `sync` e só então é movida
+— `mv` substitui um symlink em vez de escrever através dele, e a troca é atômica.
+
+Essa forma saiu da revisão de segurança do marketplace
+([#6530](https://github.com/omacom/omarchy-plugin-marketplace/issues/6530)), que
+apontou três coisas na versão anterior, com razão: caminho interpolado em código
+de shell; leitura sem limite (um arquivo gigante ou um FIFO no lugar do save
+esgotava ou travava o processo do shell onde a barra inteira mora); e um
+`save.json.$$.tmp` previsível, que um symlink pré-posicionado redirecionava.
+`make hostile` é o teste que joga tudo isso contra ele.
+
+Abrir o overlay relê o save: se o do disco for mais novo, ele
 ganha. Última escrita vence, sem lock — e é por isso que não existe tecla de
 releitura: o único caso que ela cobriria é o arquivo mudar com a sala já aberta,
 e fechar e abrir faz o mesmo.
@@ -382,6 +397,7 @@ make check     # o LCG e as divisões de 64 bits contra o BigInt do Node
 make diff      # a saída de hoje contra as fixtures de test/frames/
 make verify    # as fixtures contra o motor de JS do QML
 make state     # o Grow.qml de verdade: parada, idioma e o que o save leva
+make hostile   # FIFO, symlink, save gigante e temporário plantado contra o save.sh
 make glyphs    # os oito ícones da barra contra a fonte instalada
 ```
 
@@ -467,6 +483,7 @@ Room.qml         o que se vê por dentro, igual nas duas janelas
 Art.js           porta de ascii/art.rs - SimpleRng, PlantStructure, render
 Palette.js       porta de ui/colors.rs - as quatro paletas
 I18n.js          todo o texto de tela, nos dois idiomas, e o vocabulário do strain
+save.sh          o único código que toca o disco - limitado, conferido, atômico
 Strains.js       gerado de strains.json por `make strains`
 test/            fixtures de frame, o harness de Node, o de QML e o de estado
 ```

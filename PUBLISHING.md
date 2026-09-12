@@ -95,6 +95,44 @@ Depois da issue: um scan automático no commit exato, e uma decisão explícita 
 mantenedor (`approved-and-verified`) antes de publicar. Atualização é o mesmo
 caminho: o snapshot listado continua valendo até o novo SHA passar.
 
+## 3b. A revisão humana pediu mudança — e estava certa
+
+Em 12/09/2026, `HANCORE-linux` (COLLABORATOR no repo do marketplace, revisa as
+submissões dos outros) bloqueou a revisão com dois achados no `Grow.qml`. A
+baseline automática tinha passado; isto é a revisão humana, que olha outra coisa.
+
+O que ele apontou, e por que estava certo:
+
+1. **Caminho interpolado em código de shell, e leitura sem limite.** O comando
+   era montado concatenando o caminho dentro do texto do `sh -c`, e o
+   `StdioCollector { waitForEnd: true }` guardava o arquivo inteiro sem teto de
+   bytes nem prazo. Um `save.json` gigante enche a memória do processo do shell
+   — que é o processo onde a barra inteira mora — e um FIFO no lugar do arquivo
+   deixa o `cat` esperando para sempre.
+2. **`.tmp` de nome previsível.** `save.json.$$.tmp` com `cat >` é alvo de
+   symlink pré-posicionado: quem consegue criar arquivo no diretório faz a
+   gravação sair em outro lugar. O caminho da descarga do shell repetia o erro.
+
+O remédio está no `save.sh`, o único lugar que toca o disco: caminhos como
+argumentos (texto do script constante), `clearEnvironment` no Process e PATH
+fixo no script, teto de 1 MiB e `timeout` em tudo que pode bloquear, cheque de
+não-symlink + arquivo regular + dono antes de ler, `mktemp` (O_EXCL, modo 600)
+para gravar, `sync` antes do `mv`, e `mv` — que substitui um symlink em vez de
+escrever através dele.
+
+**O que não foi feito, e não dá:** abertura relativa a descritor com
+`O_NOFOLLOW`. É chamada de sistema, e nem o `sh` nem o QML alcançam. O que
+substitui é o par "cheque imediatamente antes do uso" + "prazo em toda
+operação": uma corrida ganha entre o cheque e o uso custa cinco segundos, não um
+travamento, e o vetor de escrita pré-posicionada deixou de existir porque o nome
+do temporário é aleatório e criado com exclusividade. Isso está dito na resposta
+à issue com essas palavras — prometer o que não se entregou é pior que explicar
+o limite.
+
+`make hostile` é o teste dos cenários dele: FIFO, symlink no lugar do save,
+symlink como diretório, save de 2 MiB, temporário plantado, e a limpeza de
+temporário velho. Vinte verificações.
+
 ## 4. A baseline de segurança
 
 O scan é estático (até 1000 arquivos, 8 MiB) e procura cinco padrões que
