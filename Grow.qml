@@ -115,6 +115,30 @@ Singleton {
     "HOME": Quickshell.env("HOME")
   })
 
+  // O mesmo ambiente fechado para o lancamento DESTACADO da descarga de saida.
+  //
+  // `Quickshell.execDetached(["prog", ...])` - a forma de lista - herda o
+  // ambiente do shell inteiro, e foi o terceiro achado da revisao de seguranca
+  // do marketplace (issue #6530): os tres `Process` limpavam o ambiente e esse
+  // nao, entao a unica gravacao que acontece automaticamente (ao descarregar)
+  // rodava sob o que estivesse no ambiente. O `-I` do Python nao ajuda ai: ele
+  // suprime PYTHONPATH e o site do usuario, mas quem age antes do Python
+  // comecar e o LOADER, e LD_PRELOAD/LD_AUDIT nao passam por ele.
+  //
+  // A sobrecarga com `processContext` aceita `clearEnvironment`, e e por isso
+  // que o contexto e montado aqui e nao na chamada: assim o teste
+  // (test/detached.qml) constroi o ambiente pelo MESMO codigo que a descarga
+  // usa, em vez de por uma copia que pode divergir.
+  function detachedContext(cmd) {
+    return ({
+      command: cmd,
+      clearEnvironment: true,
+      environment: root.helperEnv
+    })
+  }
+
+  property processContext shutdownContext
+
   // ---- estado --------------------------------------------------------------
 
   // A planta, no formato do serde de src/domain/plant.rs. E a fonte da verdade;
@@ -965,12 +989,14 @@ Singleton {
       // Sincrono de proposito: o processo esta indo embora e um Process
       // assincrono nao sobrevive para escrever.
       // `writenow` em vez de `write` porque processo destacado nao tem stdin
-      // para receber o conteudo; ele vai como argumento. O resto - mktemp, os
-      // cheques, o sync, o mv - e exatamente o mesmo caminho do escritor normal,
-      // porque duplicar a gravacao e como um dos dois lados fica para tras.
+      // para receber o conteudo; ele vai como argumento. O resto - o descritor
+      // preso, os cheques, o fsync, o renameat - e exatamente o mesmo caminho do
+      // escritor normal, porque duplicar a gravacao e como um dos dois lados
+      // fica para tras.
       var snap = JSON.stringify(root.snapshot())
-      Quickshell.execDetached(["/usr/bin/python3", "-I", root.helper,
-        "writenow", root.relDir, snap])
+      root.shutdownContext = root.detachedContext(
+        ["/usr/bin/python3", "-I", root.helper, "writenow", root.relDir, snap])
+      Quickshell.execDetached(root.shutdownContext)
     }
   }
 }

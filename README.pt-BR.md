@@ -361,7 +361,16 @@ O que ele garante, e como:
   `fsync` do diretório;
 - **limitado e com prazo:** 1 MiB na leitura e na escrita, `SIGALRM` em cinco
   segundos, e `-I` para o interpretador ignorar `PYTHON*`, o site do usuário e o
-  diretório do próprio script.
+  diretório do próprio script;
+- **ambiente fechado em todo caminho, inclusive no que roda sozinho.** Os três
+  `Process` usam `clearEnvironment` com `PATH` e `HOME` e mais nada. A gravação
+  de saída é um lançamento *destacado*, e a forma de lista do
+  `Quickshell.execDetached` herda o ambiente inteiro do shell — e o `-I` não
+  cobre isso, porque quem age antes do Python existir é o loader, e
+  `LD_PRELOAD`/`LD_AUDIT` passam por baixo dele. Agora ela usa a sobrecarga com
+  `processContext`, então o filho destacado recebe as mesmas duas variáveis.
+  `make detached` roda o teste com o ambiente sujo e exige que o filho não o
+  enxergue.
 
 Essa forma saiu da revisão de segurança do marketplace
 ([#6530](https://github.com/omacom/omarchy-plugin-marketplace/issues/6530)), em
@@ -421,6 +430,7 @@ make diff      # a saída de hoje contra as fixtures de test/frames/
 make verify    # as fixtures contra o motor de JS do QML
 make state     # o Grow.qml de verdade: parada, idioma e o que o save leva
 make hostile   # FIFO, symlink, symlink no meio do caminho, hardlink, save gigante
+make detached  # a gravação de saída roda com ambiente fechado
 make glyphs    # os oito ícones da barra contra a fonte instalada
 ```
 

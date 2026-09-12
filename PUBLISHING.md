@@ -158,6 +158,38 @@ que fecharam a última rodada: **symlink no meio do caminho** e **hardlink**.
 A lição que vale registrar: "não dá neste stack" é uma afirmação sobre o que eu
 sei, não sobre o que existe. Custou uma rodada de revisão.
 
+### Terceira rodada: o caminho que roda sozinho
+
+Ele aceitou o `save.py` para leitor e escritor e bloqueou no único lançamento
+que sobrava fora da regra:
+
+> `Component.onDestruction` calls `Quickshell.execDetached([...])`. Unlike the
+> three `Process` objects, that detached launch does not apply
+> `clearEnvironment`. Python isolated mode suppresses Python-specific
+> path/site variables, but it does not sanitize loader/runtime variables before
+> `/usr/bin/python3` starts.
+
+Certo de novo, e é o achado mais fino dos três: a gravação de saída é a **única
+que acontece sozinha**, e era a única que rodava sob o ambiente que estivesse
+lá. O `-I` não ajuda porque o loader age antes do Python existir.
+
+O `Quickshell.execDetached` tem duas formas, e só uma aceita ambiente: a de
+lista herda tudo, a que recebe um `processContext` (tipo de valor do
+`Quickshell.Io`, com `clearEnvironment` e `environment`) não. Medido antes e
+depois, com `LD_PRELOAD` sujo no pai: **236 variáveis herdadas** virando
+**3** (`HOME`, `LC_CTYPE`, `PATH`).
+
+Detalhe de QML que custou uma tentativa: passar um objeto JS literal para
+`execDetached` **não** converte para `processContext` ("Could not convert
+argument 0"). Tem que existir uma propriedade declarada do tipo
+(`property processContext ctx`) e o objeto ser atribuído a ela primeiro.
+
+`make detached` é o teste: roda o `qs` com `LD_PRELOAD`, `LD_LIBRARY_PATH`,
+`PYTHONPATH` e uma variável-marca no ambiente, e exige que o filho destacado não
+veja nenhum deles. Ele chama a mesma função que a descarga usa para montar o
+contexto, e não uma cópia - cópia fica verde enquanto o código de verdade
+regride.
+
 ## 4. A baseline de segurança
 
 O scan é estático (até 1000 arquivos, 8 MiB) e procura cinco padrões que

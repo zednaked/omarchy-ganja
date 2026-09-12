@@ -308,7 +308,15 @@ What it guarantees, and how:
   destination, then `fsync` of the directory;
 - **bounded and deadlined:** 1 MiB on reads and writes, `SIGALRM` after five
   seconds, and `-I` so the interpreter ignores `PYTHON*`, user site-packages and
-  the script's own directory.
+  the script's own directory;
+- **a closed environment on every path, including the one that runs by itself.**
+  The three `Process` objects use `clearEnvironment` with only `PATH` and
+  `HOME`. The shutdown write is a *detached* launch, and the list form of
+  `Quickshell.execDetached` inherits the shell's whole environment — `-I` does
+  not help there, because the dynamic loader acts before Python starts and
+  `LD_PRELOAD`/`LD_AUDIT` go under it. It now uses the `processContext`
+  overload, so the detached child gets the same two variables. `make detached`
+  runs the test with a dirty environment and asserts the child does not see it.
 
 That shape came out of the marketplace security review
 ([#6530](https://github.com/omacom/omarchy-plugin-marketplace/issues/6530)),
@@ -368,6 +376,7 @@ make diff      # today's output against the fixtures in test/frames/
 make verify    # the fixtures against the QML JS engine
 make state     # the real Grow.qml: stopping, language, what the save carries
 make hostile   # FIFO, symlink, mid-path symlink, hardlink, oversized save
+make detached  # the shutdown write runs with a closed environment
 make glyphs    # the eight bar icons against the installed font
 ```
 
