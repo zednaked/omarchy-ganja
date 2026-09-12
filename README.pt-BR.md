@@ -362,15 +362,10 @@ O que ele garante, e como:
 - **limitado e com prazo:** 1 MiB na leitura e na escrita, `SIGALRM` em cinco
   segundos, e `-I` para o interpretador ignorar `PYTHON*`, o site do usuário e o
   diretório do próprio script;
-- **ambiente fechado em todo caminho, inclusive no que roda sozinho.** Os três
-  `Process` usam `clearEnvironment` com `PATH` e `HOME` e mais nada. A gravação
-  de saída é um lançamento *destacado*, e a forma de lista do
-  `Quickshell.execDetached` herda o ambiente inteiro do shell — e o `-I` não
-  cobre isso, porque quem age antes do Python existir é o loader, e
-  `LD_PRELOAD`/`LD_AUDIT` passam por baixo dele. Agora ela usa a sobrecarga com
-  `processContext`, então o filho destacado recebe as mesmas duas variáveis.
-  `make detached` roda o teste com o ambiente sujo e exige que o filho não o
-  enxergue.
+- **ambiente fechado em todo caminho que existe.** Os três `Process` usam
+  `clearEnvironment` com `PATH` e `HOME` e mais nada. Não há um quarto caminho:
+  o plugin não faz lançamento destacado nenhum (ver abaixo), então nada roda
+  fora dessa regra.
 
 Essa forma saiu da revisão de segurança do marketplace
 ([#6530](https://github.com/omacom/omarchy-plugin-marketplace/issues/6530)), em
@@ -387,6 +382,20 @@ plantado.
 
 **É por isso que o plugin precisa de `python3`** — a única dependência de tempo
 de execução além do próprio Omarchy, e que os scripts do Omarchy já têm.
+
+**Não existe gravação ao descarregar, e existia uma linha aqui dizendo que
+sim.** O `Component.onDestruction` montava o snapshot e gravava com um
+lançamento destacado — e nunca rodou. Medido de duas formas, com o save apagado
+logo antes: saída do processo por `Qt.exit`, e `Quickshell.reload()`. O arquivo
+não voltou em nenhuma das duas. Ou seja, a promessa era falsa desde o primeiro
+dia, e o código era um caminho de execução que ninguém podia revisar nem testar
+— e era o único lançamento destacado do plugin, que a revisão de segurança
+apontou por herdar o ambiente. Foi removido, e não endurecido.
+
+O que garante o save é o que sempre garantiu de fato: gravação em toda ação do
+usuário, na virada de estágio, **ao fechar a sala**, e no máximo a cada dez
+minutos. O pior caso de um encerramento abrupto são os minutos desde a última
+dessas quatro.
 
 Abrir o overlay relê o save: se o do disco for mais novo, ele
 ganha. Última escrita vence, sem lock — e é por isso que não existe tecla de
@@ -430,7 +439,6 @@ make diff      # a saída de hoje contra as fixtures de test/frames/
 make verify    # as fixtures contra o motor de JS do QML
 make state     # o Grow.qml de verdade: parada, idioma e o que o save leva
 make hostile   # FIFO, symlink, symlink no meio do caminho, hardlink, save gigante
-make detached  # a gravação de saída roda com ambiente fechado
 make glyphs    # os oito ícones da barra contra a fonte instalada
 ```
 
@@ -493,7 +501,7 @@ paleta do Ganja.
 | overlay aberto e parada | 1 repintura por ação, e mais nada |
 | ação do usuário | 1 escrita atômica de JSON |
 | boot do shell | 1 `cat` do save |
-| a cada 10 min, ou quando o estágio vira | 1 escrita atômica de JSON |
+| a cada 10 min, na virada de estágio, ou ao fechar a sala | 1 escrita atômica de JSON |
 
 A última linha é um acréscimo à SPEC, que pedia escrita só em ação do usuário.
 Sem ela, um shell que reinicia sem descarregar direito perde as horas

@@ -231,7 +231,7 @@ def main(argv):
     signal.alarm(DEADLINE)
 
     if len(argv) < 3:
-        die("uso: save.py <read|write|writenow> <dir-relativo-ao-HOME> [...]")
+        die("uso: save.py <read|write> <dir-relativo-ao-HOME> [arquivo-antigo]")
     modo, rel = argv[1], argv[2]
 
     hfd = home_fd()
@@ -279,14 +279,16 @@ def main(argv):
                             os.close(x)
             return 0
 
-        if modo in ("write", "writenow"):
-            if modo == "write":
-                # Limitado na entrada tambem: stdin pode ser infinito.
-                dados = sys.stdin.buffer.read(MAX + 1)
-            else:
-                if len(argv) < 4:
-                    die("writenow precisa do conteudo como argumento")
-                dados = argv[3].encode("utf-8")
+        if modo == "write":
+            # Limitado na entrada tambem: stdin pode ser infinito.
+            #
+            # O conteudo vem SEMPRE pelo stdin, e nunca por argumento. Existiu um
+            # modo `writenow` que recebia o JSON como argv, para a descarga de
+            # saida do shell - que era um processo destacado e nao tinha stdin.
+            # Aquele caminho foi removido do plugin por nunca ter executado, e o
+            # modo saiu junto: argumento de processo aparece em `ps` para
+            # qualquer usuario da maquina, e o save tem o historico inteiro.
+            dados = sys.stdin.buffer.read(MAX + 1)
 
             dfd, abertos = walk(hfd, split(rel), create=True)
             try:

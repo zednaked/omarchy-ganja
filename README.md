@@ -309,14 +309,10 @@ What it guarantees, and how:
 - **bounded and deadlined:** 1 MiB on reads and writes, `SIGALRM` after five
   seconds, and `-I` so the interpreter ignores `PYTHON*`, user site-packages and
   the script's own directory;
-- **a closed environment on every path, including the one that runs by itself.**
-  The three `Process` objects use `clearEnvironment` with only `PATH` and
-  `HOME`. The shutdown write is a *detached* launch, and the list form of
-  `Quickshell.execDetached` inherits the shell's whole environment — `-I` does
-  not help there, because the dynamic loader acts before Python starts and
-  `LD_PRELOAD`/`LD_AUDIT` go under it. It now uses the `processContext`
-  overload, so the detached child gets the same two variables. `make detached`
-  runs the test with a dirty environment and asserts the child does not see it.
+- **a closed environment, on every path there is.** All three `Process` objects
+  use `clearEnvironment` with `PATH` and `HOME` and nothing else. There is no
+  fourth path: the plugin makes no detached launches at all (see below), so
+  nothing runs outside that rule.
 
 That shape came out of the marketplace security review
 ([#6530](https://github.com/omacom/omarchy-plugin-marketplace/issues/6530)),
@@ -333,6 +329,20 @@ temp file.
 
 **This is why the plugin needs `python3`** — the only runtime dependency beyond
 Omarchy itself, and one Omarchy's own scripts already have.
+
+**There is no write on shutdown, and there used to be a line here claiming
+otherwise.** `Component.onDestruction` built a snapshot and wrote it with a
+detached launch — and it never ran. Measured two ways, with the save deleted
+immediately before: process exit via `Qt.exit`, and `Quickshell.reload()`. The
+file was not recreated in either. So the promise was false from the first day,
+and the code was an execution path nobody could review or test — and the only
+detached launch in the plugin, which the security review flagged for inheriting
+the environment. It was removed rather than hardened.
+
+What guarantees the save is what always actually guaranteed it: a write on every
+user action, on each stage change, **when the room closes**, and at most every
+ten minutes. The worst case after an abrupt shutdown is the minutes since the
+last of those four.
 
 Opening the overlay re-reads the save: if the one on disk is newer, it wins.
 Last write wins, no locks — and that is also why there is no "reload" key: the
@@ -376,7 +386,6 @@ make diff      # today's output against the fixtures in test/frames/
 make verify    # the fixtures against the QML JS engine
 make state     # the real Grow.qml: stopping, language, what the save carries
 make hostile   # FIFO, symlink, mid-path symlink, hardlink, oversized save
-make detached  # the shutdown write runs with a closed environment
 make glyphs    # the eight bar icons against the installed font
 ```
 
@@ -408,7 +417,7 @@ access to the singleton — are refused by `omarchy plugin validate`.
 | overlay open and stopped | one repaint per action, and nothing else |
 | user action | 1 atomic JSON write |
 | shell boot | 1 `cat` of the save |
-| every 10 min, or when the stage turns | 1 atomic JSON write |
+| every 10 min, when the stage turns, or when the room closes | 1 atomic JSON write |
 
 Measured with the overlay open: 22–40% of one core at 10 frames per second, or
 ~30 ms of CPU per frame. That is expensive by an order of magnitude for drawing

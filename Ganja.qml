@@ -87,6 +87,12 @@ Item {
       // olhar - ver a linha longa no Grow.qml. Ele continua sendo o ritmo do
       // TUI e continua avisado em vermelho no cabecalho.
       Grow.stopFast()
+
+      // E grava. Isto entrou quando a descarga de saida saiu (ela nunca rodava,
+      // ver o comentario no fim do Grow.qml): fechar a sala e o momento em que
+      // a pessoa acabou de mexer na planta, e uma escrita aqui troca "perdi ate
+      // dez minutos" por "perdi o que aconteceu desde que fechei".
+      Grow.save()
     }
   }
 

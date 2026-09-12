@@ -191,10 +191,13 @@ with Palco() as p:
     verifica("temporario de agora sobrevive", True, os.path.exists(agora))
     verifica("e o save continua la", JSON, p.le().stdout.decode())
 
-# ---- writenow, o caminho da descarga do shell ------------------------------
+# ---- o modo que saiu -------------------------------------------------------
+# `writenow` recebia o conteudo por argumento, para a descarga de saida do
+# shell. Aquele caminho nunca executou e foi removido; o modo saiu junto, porque
+# argumento de processo aparece no `ps` de qualquer usuario da maquina.
 with Palco() as p:
-    roda(p.home, "writenow", REL, JSON)
-    verifica("writenow grava", JSON, p.le().stdout.decode())
+    verifica("writenow nao existe mais", 1, roda(p.home, "writenow", REL, JSON).returncode)
+    verifica("e nao gravou nada", False, os.path.exists(p.save()))
 
 # ---- migracao do caminho antigo -------------------------------------------
 with Palco() as p:

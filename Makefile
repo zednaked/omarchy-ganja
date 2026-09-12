@@ -7,7 +7,6 @@
 #   make verify    confere as fixtures dentro do motor de JS do QML
 #   make state     roda o Grow.qml de verdade e confere o que ele guarda
 #   make hostile   joga FIFO, symlink, hardlink e save gigante contra o save.py
-#   make detached  confere que a gravacao de saida roda com ambiente fechado
 #   make glyphs    confere os sete icones da barra contra a fonte instalada
 #   make test      check + diff + verify
 #
@@ -17,7 +16,7 @@
 GANJA_TUI ?= $(HOME)/Projetos/Ganja-TUI
 STRAINS_JSON := $(GANJA_TUI)/strains.json
 
-.PHONY: strains check frames diff verify state hostile detached glyphs test
+.PHONY: strains check frames diff verify state hostile glyphs test
 
 Strains.js: $(STRAINS_JSON) Makefile
 	@printf '.pragma library\n\n' > $@
@@ -63,23 +62,7 @@ state:
 hostile:
 	@python3 test/hostile.py
 
-# A gravacao de saida e a unica que acontece sozinha, e ela e um lancamento
-# DESTACADO - que herda o ambiente do shell a menos que alguem peca o contrario.
-# Este teste roda o qs com LD_PRELOAD, LD_AUDIT e PYTHONPATH sujos e exige que o
-# filho nao veja nenhum dos tres. Terceiro achado da revisao de seguranca
-# (issue #6530).
-detached:
-	@out=$$(mktemp) && GANJA_TEST_OUT=$$out test/stage.sh detached.qml >/dev/null 2>&1; \
-	  python3 -c "import ast,sys; \
-	    amb=dict(ast.literal_eval(open('$$out').read() or '[]')); \
-	    sujas=[k for k in ('LD_PRELOAD','LD_AUDIT','LD_LIBRARY_PATH','PYTHONPATH','GANJA_VAZAMENTO') if k in amb]; \
-	    print('FALHOU: o filho destacado herdou', sujas) if sujas else None; \
-	    print('FALHOU: o filho nem rodou') if not amb else None; \
-	    print('OK: gravacao de saida com ambiente fechado (' + str(len(amb)) + ' variaveis: ' + ', '.join(sorted(amb)) + ')') if amb and not sujas else None; \
-	    sys.exit(1 if (sujas or not amb) else 0)"; \
-	  rc=$$?; rm -f $$out; exit $$rc
-
 glyphs:
 	@python3 test/glyphs.py
 
-test: check diff verify state hostile detached glyphs
+test: check diff verify state hostile glyphs

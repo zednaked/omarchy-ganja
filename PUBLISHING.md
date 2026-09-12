@@ -184,11 +184,30 @@ Detalhe de QML que custou uma tentativa: passar um objeto JS literal para
 argument 0"). Tem que existir uma propriedade declarada do tipo
 (`property processContext ctx`) e o objeto ser atribuído a ela primeiro.
 
-`make detached` é o teste: roda o `qs` com `LD_PRELOAD`, `LD_LIBRARY_PATH`,
-`PYTHONPATH` e uma variável-marca no ambiente, e exige que o filho destacado não
-veja nenhum deles. Ele chama a mesma função que a descarga usa para montar o
-contexto, e não uma cópia - cópia fica verde enquanto o código de verdade
-regride.
+**E aí o conserto virou remoção.** Antes de responder, fui verificar se aquela
+descarga de saída chegava a executar. Não chegava — medido de duas formas, com o
+save apagado logo antes:
+
+| experimento | o save voltou? |
+|---|---|
+| `qs -p …` + `Qt.exit(0)` | não |
+| `Quickshell.reload()` | não |
+
+O `Component.onDestruction` de um Singleton do Quickshell não roda no
+encerramento do processo nem na recarga. Ou seja: o plugin prometia "grava ao
+descarregar" desde o primeiro dia e nunca gravou, e o revisor estava analisando
+um caminho que não executa — a pior categoria de código em revisão de segurança,
+porque ninguém consegue testá-lo nem exercitá-lo.
+
+Então a resposta final não foi endurecer: foi **remover**. Sai o
+`Component.onDestruction`, sai o `execDetached` (o plugin não faz mais nenhum
+lançamento destacado), sai o modo `writenow` do helper — que existia só para
+aquele caminho e passava o save inteiro por argumento, visível no `ps` de
+qualquer usuário da máquina.
+
+No lugar da promessa falsa entrou uma garantia real: **gravar ao fechar a
+sala**. O pior caso de um encerramento abrupto passou de "até dez minutos" para
+"o que aconteceu desde que você fechou a janela".
 
 ## 4. A baseline de segurança
 

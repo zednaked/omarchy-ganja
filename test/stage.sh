@@ -37,25 +37,6 @@ cp "$raiz"/*.qml "$raiz"/*.js "$raiz"/*.py "$raiz"/qmldir "$palco/plugin/"
 cp "$raiz/test/$arquivo" "$palco/plugin/"
 [ -d "$raiz/test/frames" ] && cp -r "$raiz/test/frames" "$palco/plugin/"
 
-# O detached.qml e de outra especie: ele nao imprime OK/FALHOU, ele DEIXA um
-# arquivo com o ambiente que o filho destacado recebeu, e quem julga e o
-# Makefile. E roda com um ambiente sujo de proposito - LD_PRELOAD e amigos - para
-# provar que o filho nao os herda.
-if [ "$arquivo" = "detached.qml" ]; then
-  # LD_PRELOAD aponta para uma biblioteca REAL e inofensiva de proposito: com
-  # um caminho inexistente o proprio qs nao sobe (o loader recusa LD_AUDIT
-  # quebrado e reclama do LD_PRELOAD), e o teste passaria a testar nada.
-  GANJA_TEST_OUT=${GANJA_TEST_OUT:?} \
-  HOME="$palco/home" \
-  LD_PRELOAD=/usr/lib/libm.so.6 \
-  LD_LIBRARY_PATH=/tmp/ganja-teste \
-  PYTHONPATH=/tmp/ganja-teste \
-  GANJA_VAZAMENTO=1 \
-  QT_FORCE_STDERR_LOGGING=1 \
-    qs -p "$palco/plugin/$arquivo" 2>&1 | grep -E "FALHOU" || true
-  exit 0
-fi
-
 HOME="$palco/home" QT_FORCE_STDERR_LOGGING=1 \
   qs -p "$palco/plugin/$arquivo" 2>&1 \
   | grep -E "OK:|FALHOU|DIFERE|FIXTURE" || true
