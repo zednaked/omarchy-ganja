@@ -12,6 +12,28 @@ O diretório do marketplace tem dois endereços para a mesma coisa:
 
 ---
 
+## Onde isto está — 12/09/2026, 19h UTC
+
+| | |
+|---|---|
+| repo | <https://github.com/zednaked/omarchy-ganja>, público |
+| versão | **1.2.3**, commit `dda16e1`, release `v1.2.0` no GitHub |
+| submissão | issue [#6530](https://github.com/omacom/omarchy-plugin-marketplace/issues/6530), aberta, labels `submission, validated` |
+| validação automática | ✅ no `dda16e1` — "Ready for listing review" |
+| baseline de segurança | ✅ `passed` no `dda16e1`, sem achados e sem capacidades |
+| revisão humana | três rodadas com `HANCORE-linux` (COLLABORATOR), todas respondidas — seção 3b |
+| falta | a decisão de mantenedor: o label `approved-and-verified`, que só eles aplicam |
+
+**A regra que congela o repo até lá:** o HEAD tem que continuar igual ao commit
+validado. Se empurrar qualquer coisa, edite o corpo da issue para re-disparar as
+duas checagens — senão o site marca "Update unverified", que é o snapshot
+verificado ficar para trás do código observado.
+
+O que continua em aberto e não depende deles: o `diff` contra o Ganja-TUI de
+verdade (precisa de `cargo`) e a otimização dos 30 ms por quadro. Seção 6.
+
+---
+
 ## 1. O que o validador exige — **passando**
 
 `omarchy plugin validate .` sai com 0 e sem uma linha de reclamação. O que ele
