@@ -45,14 +45,14 @@ risco de escrever na planta de quem está testando.
 
 | requisito | aqui |
 |---|---|
-| repositório **público** no GitHub | ⬜ criar `github.com/zednaked/omarchy-ganja` |
+| repositório **público** no GitHub | ✅ <https://github.com/zednaked/omarchy-ganja> |
 | `manifest.json` na raiz do repo | ✅ (a raiz do repo **é** a pasta do plugin) |
-| README na raiz, com instruções de instalação **e de remoção** | ✅ `README.md` |
+| README na raiz, com instruções de instalação **e de remoção** | ✅ `README.md` — a seção "Remove" existe porque a checklist exige, e a primeira versão só tinha instalação |
 | arquivo de licença na raiz, documentando dependências externas | ✅ `LICENSE` (MIT) e não há dependências |
 | `author`, `license`, `description` no manifest | ✅ |
 | `version` ≤ 64 caracteres | ✅ `1.1.0` |
 | instalação e remoção limpas | ✅ é cópia de pasta; o save fica fora dela |
-| imagem de preview (opcional, ≤ 50 MB e ≤ 40 megapixels) | ⬜ `preview.png` — ver seção 5 |
+| imagem de preview (opcional, ≤ 50 MB e ≤ 40 megapixels) | ✅ `preview.png`, 1440×810, 190 KB — a sala em `full`, em inglês |
 
 Formatos aceitos de preview: `.png`, `.jpg`, `.jpeg`, `.webp`, `.avif`.
 
@@ -71,10 +71,10 @@ Campos, e o que preencher:
   **Sugestão: `Widgets`** — é um widget de barra com um overlay, e é isso que a
   pessoa está procurando quando acha o plugin. `Desktop` seria a segunda opção.
   (Cuidado: a grafia tem que casar exatamente.)
-- **Tags** — de uma a três, da lista: `ai`, `bar`, `education`, `games`,
-  `hyprland`, `kids`, `launcher`, `media`, `power-management`, `quickshell`,
-  `security`, `system`, `workspaces`. **Sugestão: `bar`, `games`,
-  `quickshell`.**
+- **Tags** — de uma a três (mais de três reprova), da lista exata do template:
+  `AI`, `Bar`, `Education`, `Games`, `Hyprland`, `Kids`, `Launcher`, `Media`,
+  `Power management`, `Quickshell`, `Security`, `System`, `Workspaces`.
+  **Sugestão: `Bar`, `Games`, `Quickshell`.**
 - **Suggest a missing tag** — opcional. Nada a pedir.
 - **Maintainer notes** — vale dizer três coisas, porque são exatamente as que um
   revisor procuraria: (1) é QML puro, sem binário e sem rede; (2) é porte do
@@ -124,12 +124,13 @@ atômica, e um `find -delete` de `.tmp` velho. Nenhuma delas toca em nada fora d
 
 ## 5. O que falta antes de submeter
 
-1. **Criar o repo público** `github.com/zednaked/omarchy-ganja` e dar `push`.
-   O commit inicial já está feito aqui.
-2. **`preview.png`** — uma captura do overlay aberto, que é o que vende o
-   plugin. Vale a growing room em `medium` com a planta em floração, o painel do
-   strain à direita e os medidores embaixo. O ícone da barra não serve de
-   preview: é um glifo de 16 px.
+1. **Abrir a issue de submissão** com os campos da seção 3. É o único passo
+   que fala com gente de fora, e está esperando a sua palavra.
+2. **Refazer o `preview.png` sem o ponteiro do mouse.** O que está lá é a sala
+   em `full`, em inglês, com tudo à mostra (planta, seis medidores, painel do
+   strain, linha de atalhos inteira) — mas o cursor ficou por cima do medidor de
+   raiz/copa. Refazer é `omarchy-shell ganja window full; omarchy-shell ganja
+   open`, tirar o ponteiro do caminho, `grim` e reduzir para 1440 de largura.
 3. **Um `LICENSE` no Ganja-TUI também.** O repo de origem declara MIT no
    `Cargo.toml` e no README, mas não tem o arquivo. Como a submissão pede
    "licença e dependências documentadas" e este plugin é porte daquele código, a
@@ -163,5 +164,10 @@ atômica, e um `find -delete` de `.tmp` velho. Nenhuma delas toca em nada fora d
   `README.pt-BR.md` é o longo, com os porquês, e o `SPEC.md` é o registro das
   decisões.
 - **CI.** Não é exigido. `.github/workflows/test.yml` roda o que roda sem sessão
-  gráfica (`make check`, `make diff`, `make glyphs`); `make verify` e
-  `make state` precisam de Quickshell e ficam para a máquina de quem desenvolve.
+  gráfica (`make check`, `make diff`, `make glyphs`) mais os mesmos checks de
+  manifest que o `omarchy plugin validate` faz, já que ele não existe no runner;
+  `make verify` e `make state` precisam de Quickshell e ficam para a máquina de
+  quem desenvolve. O primeiro run reprovou e valeu a pena: `fc-match` numa
+  máquina sem Nerd Font devolve a DejaVu Sans em vez de dizer "não tenho", e o
+  teste de glifos acusava os oito como ausentes. Agora ele reconhece a fonte
+  errada e se declara pulado.

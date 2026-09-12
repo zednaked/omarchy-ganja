@@ -62,6 +62,26 @@ já tinha uma seria pior.
 
 ---
 
+## Desinstalar
+
+```sh
+omarchy plugin remove zed.ganja
+omarchy-restart-shell
+```
+
+Isso tira o plugin de `~/.config/omarchy/plugins/` e o id dele do layout da barra
+no `shell.json`. Nada mais seu é tocado.
+
+A planta **não** sai junto, de propósito: o save é a única coisa aqui que levou
+tempo para existir, e desinstalar um plugin não é a mesma frase que "jogue a
+planta fora". Para apagar ela também:
+
+```sh
+rm -rf ~/.local/share/zed.ganja
+```
+
+---
+
 ## Teclas
 
 Dentro do overlay:

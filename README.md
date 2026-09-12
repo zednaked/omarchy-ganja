@@ -49,6 +49,24 @@ under `bar.layout.left`, `center` or `right`:
 { "id": "zed.ganja" }
 ```
 
+## Remove
+
+```sh
+omarchy plugin remove zed.ganja
+omarchy-restart-shell
+```
+
+That takes the plugin out of `~/.config/omarchy/plugins/` and its id out of the
+bar layout in `shell.json`. Nothing else of yours is touched.
+
+The plant is **not** removed with it, on purpose: a save is the one thing here
+that took time to make, and uninstalling a plugin is not the same as saying
+"throw away the plant". To delete it too:
+
+```sh
+rm -rf ~/.local/share/zed.ganja
+```
+
 **Requirements:** Omarchy with `omarchy-shell` (plugin schemaVersion 1) and a
 Nerd Font in the bar — the stage glyphs come from the Material Design set
 (`md-sprout`, `md-cannabis`, …). `make glyphs` checks the eight glyphs against
