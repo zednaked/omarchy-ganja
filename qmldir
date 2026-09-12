@@ -1,0 +1,6 @@
+singleton Grow 1.0 Grow.qml
+
+# Room precisa estar listado: assim que existe um qmldir no diretorio, ele passa
+# a ser a lista autoritativa dos tipos, e o arquivo ao lado deixa de ser
+# encontrado sozinho. O erro e "Room is not a type", que nao diz isso.
+Room 1.0 Room.qml

@@ -1,0 +1,7 @@
+# Nada gerado mora aqui: Strains.js entra no git já gerado de propósito (é dado
+# estático, e ler o JSON em runtime custaria um processo por planta nova), e os
+# testes de QML montam a cópia que usam num diretório temporário.
+#
+# O que aparece sozinho:
+preview.png.orig
+*.tmp

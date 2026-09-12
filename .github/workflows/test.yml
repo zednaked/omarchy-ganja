@@ -1,0 +1,53 @@
+# O que dá para provar sem sessão gráfica.
+#
+# `make verify` e `make state` rodam o Quickshell de verdade e precisam de uma
+# sessão Wayland: ficam para a máquina de quem desenvolve, e o README diz isso.
+# O que roda aqui é o que pega regressão de verdade na parte mais frágil do
+# projeto — a aritmética de 64 bits feita à mão e os 64 frames de referência.
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: fontTools, para conferir os glifos da barra
+        run: pip install fonttools
+
+      - name: o LCG de 64 bits contra o BigInt do Node
+        run: make check
+
+      - name: os 64 frames contra as fixtures
+        run: make diff
+
+      # Sem a JetBrainsMono Nerd Font instalada o teste se declara "pulado" e
+      # sai 0 de propósito: ele confere a fonte DA MÁQUINA, e a máquina que
+      # importa é a de quem usa, não a do runner.
+      - name: os glifos da barra contra a fonte instalada
+        run: make glyphs
+
+      - name: o manifest contra o schema do Omarchy
+        run: |
+          # Os mesmos checks do `omarchy plugin validate`, que não está
+          # instalado aqui: manifest válido, schemaVersion 1, campos
+          # obrigatórios, entry points existindo, e nenhum symlink na pasta.
+          jq -e '.schemaVersion == 1' manifest.json > /dev/null
+          for f in id name version kinds entryPoints author license description; do
+            jq -e --arg f "$f" 'has($f)' manifest.json > /dev/null
+          done
+          jq -e '.id | test("^[A-Za-z0-9][A-Za-z0-9._-]*$") and (startswith("omarchy.") | not)' manifest.json > /dev/null
+          for ep in $(jq -r '.entryPoints | to_entries[] | .value' manifest.json); do
+            test -f "$ep" || { echo "entry point file not found: '$ep'"; exit 1; }
+          done
+          link=$(find . -name .git -prune -o -type l -print -quit)
+          test -z "$link" || { echo "symlinks are not allowed inside a plugin folder: $link"; exit 1; }
+          echo "manifest ok"
