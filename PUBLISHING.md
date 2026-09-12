@@ -50,7 +50,7 @@ risco de escrever na planta de quem está testando.
 | README na raiz, com instruções de instalação **e de remoção** | ✅ `README.md` — a seção "Remove" existe porque a checklist exige, e a primeira versão só tinha instalação |
 | arquivo de licença na raiz, documentando dependências externas | ✅ `LICENSE` (MIT) e não há dependências |
 | `author`, `license`, `description` no manifest | ✅ |
-| `version` ≤ 64 caracteres | ✅ `1.1.0` |
+| `version` ≤ 64 caracteres | ✅ `1.2.0` |
 | instalação e remoção limpas | ✅ é cópia de pasta; o save fica fora dela |
 | imagem de preview (opcional, ≤ 50 MB e ≤ 40 megapixels) | ✅ `preview.png`, 1440×810, 190 KB — a sala em `full`, em inglês |
 
@@ -125,7 +125,20 @@ atômica, e um `find -delete` de `.tmp` velho. Nenhuma delas toca em nada fora d
 ## 5. Submetido em 12/09/2026
 
 **Issue: <https://github.com/omacom/omarchy-plugin-marketplace/issues/6530>**
-(`[Plugin]: Ganja`, categoria Widgets, tags Bar/Games/Quickshell.) O corpo segue
+(`[Plugin]: Ganja`, categoria Widgets, tags Bar/Games/Quickshell.)
+
+**Atualizar o commit validado é editar a issue.** A validação e a baseline são
+presas a um commit exato, e a primeira rodada olhou o `0a54942`. O workflow deles
+(`route-issue-automation.yml`) roda em `issues: [opened, edited, reopened,
+labeled, unlabeled]`, então editar o corpo da issue re-dispara as duas no HEAD
+atual — sem abrir issue nova, e sem mexer no que o mantenedor já leu. O
+formulário `[Verify]:` é para **listagens que já existem**, não para uma
+submissão aberta: ele serve para promover um commit novo de um plugin já
+publicado.
+
+Cuidado ao editar: os cabeçalhos `###` têm que continuar na mesma ordem e as
+cinco caixas marcadas. Cabeçalho faltando ou reordenado reprova antes de
+qualquer humano ler. O corpo segue
 o formato gerado pelo próprio template — os cabeçalhos `###` na ordem, os cinco
 itens da checklist marcados — porque é assim que as submissões que passam se
 parecem; conferi em duas issues abertas (#6525 e #6526, ambas com os labels
