@@ -261,14 +261,19 @@ Item {
     Text {
       id: statusLine
       // Na mesma linha vai a direita; em linha propria, comeca embaixo do
-      // cabecalho e alinhada com ele. Atribuir `undefined` a uma ancora e como se
-      // desfaz a outra - sem isso as duas valem e a que vier depois ganha.
-      anchors {
-        top: room.headFits ? header.top : header.bottom
-        topMargin: room.headFits ? 0 : 5
-        right: room.headFits ? parent.right : undefined
-        left: room.headFits ? undefined : parent.left
-      }
+      // cabecalho e alinhada com ele.
+      //
+      // Isto ja foi um bloco `anchors { }` que trocava `left` e `right` por
+      // `undefined` conforme o caso, e voltou a quebrar: desfazer uma ancora
+      // atribuindo `undefined` dentro do bloco nao e confiavel. Quando a de
+      // antes nao se desfaz, as DUAS valem, o Text estica de ponta a ponta da
+      // faixa e a frase reaparece alinhada a esquerda - na altura do cabecalho,
+      // por cima dele. Era esse o desenho ilegivel.
+      //
+      // x e y sao dois numeros. Dois numeros nao ficam pela metade, e o caso em
+      // que cabe lado a lado deixa de depender de o QML esquecer a ancora certa.
+      x: room.headFits ? Math.max(0, parent.width - statusLine.implicitWidth) : 0
+      y: room.headFits ? 0 : header.implicitHeight + 5
       // Abaixo disto a sala e estreita demais para uma frase a mais de qualquer
       // forma, e a planta e o motivo da janela existir. A excecao e a gravacao
       // falhando: essa aparece em qualquer largura, porque e a unica frase aqui
