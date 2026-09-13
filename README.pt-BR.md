@@ -351,6 +351,14 @@ O que ele garante, e como:
   symlink trocado em qualquer ponto da corrente faz a abertura **falhar** em vez
   de seguir. Esse fd é mantido pela leitura, pela gravação, pelo fsync, pelo
   rename e pela limpeza — nada é re-resolvido desde a raiz depois disso;
+- **nenhum diretório do caminho pode ser gravável por grupo ou por outros.**
+  Identidade e dono não bastam: quem pode escrever num diretório troca o arquivo
+  de dentro dele sem ser dono de nada, e o descritor seria o fd certo, do
+  diretório certo, com o save de outra pessoa. O modo entra na validação de cada
+  componente, no mesmo `fstat` que confere o dono. O diretório de estado do
+  plugin — o único que ele cria — é apertado para 700 em vez de recusado:
+  recusar a leitura faria a planta começar do zero e a gravação seguinte apagaria
+  o save bom;
 - **o arquivo é validado no fd de onde vai ser lido** — `fstat` diz que é
   arquivo regular (descarta FIFO, socket e dispositivo), que é nosso, que tem
   exatamente um link (então hardlink para arquivo de outro é recusado) e que
@@ -378,7 +386,8 @@ re-resolve o caminho, então `[ -f ]` seguido de `head`/`mv` são duas resoluç�
 com uma janela no meio, e o `sh` não alcança `openat`, `renameat` nem
 `O_NOFOLLOW`. O Python alcança. `make hostile` joga tudo de volta: FIFO, symlink
 na folha, symlink no meio do caminho, hardlink, save gigante, temporário
-plantado.
+plantado, diretório gravável por grupo ou por outros no meio do caminho, e modo
+frouxo no diretório do próprio plugin.
 
 **É por isso que o plugin precisa de `python3`** — a única dependência de tempo
 de execução além do próprio Omarchy, e que os scripts do Omarchy já têm.
@@ -438,7 +447,7 @@ make check     # o LCG e as divisões de 64 bits contra o BigInt do Node
 make diff      # a saída de hoje contra as fixtures de test/frames/
 make verify    # as fixtures contra o motor de JS do QML
 make state     # o Grow.qml de verdade: parada, idioma e o que o save leva
-make hostile   # FIFO, symlink, symlink no meio do caminho, hardlink, save gigante
+make hostile   # FIFO, symlink, symlink no meio, hardlink, modo frouxo, save gigante
 make glyphs    # os oito ícones da barra contra a fonte instalada
 ```
 
@@ -447,7 +456,7 @@ make glyphs    # os oito ícones da barra contra a fonte instalada
   caractere por caractere idênticos aos do Node; os oito glifos da barra são os
   desenhos certos na fonte instalada — `make glyphs` existe porque a primeira
   versão pôs um logo de open source no lugar da muda, sem erro nenhum; e o
-  `Grow.qml` de verdade passa por 28 verificações de estado (`make state`),
+  `Grow.qml` de verdade passa por 47 verificações de estado (`make state`),
   incluindo a de que uma binding que chama `Grow.t()` re-avalia quando o idioma
   muda — sem isso a tela ficaria em duas línguas e nada apareceria no log.
 - **Não verificado:** o `diff` contra o **Ganja-TUI de verdade**. Isso precisa de

@@ -44,7 +44,11 @@
 #   - a gravacao cria o temporario com O_CREAT|O_EXCL|O_NOFOLLOW naquele
 #     descritor, escreve, faz fsync, e publica com `renameat` no MESMO
 #     descritor, seguido de fsync do diretorio. O caminho do pai nao e
-#     re-resolvido em nenhum dos passos.
+#     re-resolvido em nenhum dos passos;
+#   - nenhum diretorio do caminho pode ser gravavel por grupo ou por outros.
+#     Identidade e dono nao bastam: quem escreve no diretorio troca o arquivo
+#     de dentro dele sem precisar ser dono de nada. O do plugin, que e o unico
+#     que a gente cria, e apertado para 700 em vez de recusado.
 #
 # O resto das defesas continua: teto de bytes, prazo por SIGALRM, e o
 # interpretador em modo isolado (`-I`, que ignora PYTHON*, o site do usuario e
@@ -83,39 +87,78 @@ def die(msg):
     sys.exit(1)
 
 
-def own_dir_fd(fd):
+def own_dir_fd(fd, nome="diretorio"):
     """Valida um descritor de diretorio pelo proprio descritor, nao pelo nome."""
     st = os.fstat(fd)
     if not stat.S_ISDIR(st.st_mode):
-        raise Refused("nao e diretorio")
+        raise Refused("%s nao e diretorio" % nome)
     if st.st_uid != os.geteuid():
-        raise Refused("diretorio de outro usuario")
+        raise Refused("%s e de outro usuario" % nome)
+    # Ser dono do diretorio nao basta: quem pode escrever NELE manda no que ha
+    # dentro dele, mesmo sem ser dono dos filhos - cria, renomeia e substitui.
+    # Um `save.json` trocado por outra conta continuaria sendo aberto pelo fd
+    # certo, do diretorio certo, e com o conteudo do atacante. Por isso o modo
+    # entra na validacao junto com o dono, e vem do mesmo `fstat`.
+    if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+        raise Refused("%s permite escrita de grupo/outros (modo %04o); "
+                      "corrija com `chmod go-w`" % (nome, stat.S_IMODE(st.st_mode)))
     return st
 
 
-def walk(root_fd, parts, create=False):
+def harden_dir_fd(fd):
+    """Aperta o modo do diretorio de estado, que e nosso e so nosso.
+
+    Vale para os diretorios que o plugin cria: se um existir com modo frouxo -
+    de uma versao antiga, de um `umask` permissivo, de um restore de backup - o
+    certo e consertar, e nao recusar: recusar a leitura faria o plugin comecar
+    do zero e a gravacao seguinte apagaria a planta de quem instalou.
+
+    O conserto e no descritor (`fchmod`), no inode ja validado, e acontece antes
+    de qualquer leitura - entao o que for lido ja sai de um diretorio 700. Nao
+    desfaz o que outra conta tenha escrito ali antes; para isso continuam de pe
+    os cheques do arquivo (dono e `st_nlink`) em `read_at`.
+
+    Nao se aplica aos componentes do meio (`.local`, `.local/share`): sao de
+    todo mundo, nao nossos, e apertar o modo deles seria decidir pelos outros.
+    """
+    st = os.fstat(fd)
+    if (stat.S_ISDIR(st.st_mode) and st.st_uid == os.geteuid()
+            and st.st_mode & (stat.S_IWGRP | stat.S_IWOTH)):
+        os.fchmod(fd, 0o700)
+
+
+def walk(root_fd, parts, create=False, own_last=False):
     """Desce componente por componente com openat + O_NOFOLLOW.
 
     Devolve um descritor do ultimo diretorio. Um symlink em QUALQUER componente
     faz `os.open` levantar OSError (ELOOP) em vez de seguir - e e por isso que a
     descida e feita passo a passo, e nao com um `os.open` do caminho inteiro:
     O_NOFOLLOW so protege o ultimo componente.
+
+    Cada componente e validado no fd recem-aberto: diretorio, nosso, e fechado
+    para grupo e outros. `own_last` diz que o ultimo componente e o diretorio de
+    estado do plugin - o unico que a gente cria, e portanto o unico que a gente
+    conserta em vez de recusar.
     """
     fd = root_fd
     opened = []
     try:
-        for part in parts:
+        for i, part in enumerate(parts):
             if part in ("", ".", ".."):
                 raise Refused("componente de caminho invalido: %r" % part)
             if create:
                 try:
+                    # `0o700` ja passa pelo umask, que so tira bits - um umask
+                    # permissivo nao consegue afrouxar o que nao foi pedido.
                     os.mkdir(part, 0o700, dir_fd=fd)
                 except FileExistsError:
                     pass
             nxt = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
                           dir_fd=fd)
             opened.append(nxt)
-            own_dir_fd(nxt)
+            if own_last and i == len(parts) - 1:
+                harden_dir_fd(nxt)
+            own_dir_fd(nxt, part)
             fd = nxt
         return fd, opened
     except Exception:
@@ -132,7 +175,7 @@ def home_fd():
     # ele vem do ambiente que o proprio shell da barra montou.
     fd = os.open(home, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
     try:
-        own_dir_fd(fd)
+        own_dir_fd(fd, "$HOME")
     except Exception:
         os.close(fd)
         raise
@@ -242,7 +285,7 @@ def main(argv):
             # O diretorio pode nao existir ainda (primeira carga): isso nao e
             # erro, e "nao ha save".
             try:
-                dfd, abertos = walk(hfd, split(rel))
+                dfd, abertos = walk(hfd, split(rel), own_last=True)
             except (OSError, Refused):
                 dfd, abertos = None, []
 
@@ -290,7 +333,7 @@ def main(argv):
             # qualquer usuario da maquina, e o save tem o historico inteiro.
             dados = sys.stdin.buffer.read(MAX + 1)
 
-            dfd, abertos = walk(hfd, split(rel), create=True)
+            dfd, abertos = walk(hfd, split(rel), create=True, own_last=True)
             try:
                 write_at(dfd, dados)
             finally:

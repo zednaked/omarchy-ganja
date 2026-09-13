@@ -12,16 +12,16 @@ O diretório do marketplace tem dois endereços para a mesma coisa:
 
 ---
 
-## Onde isto está — 12/09/2026, 19h UTC
+## Onde isto está — 13/09/2026
 
 | | |
 |---|---|
 | repo | <https://github.com/zednaked/omarchy-ganja>, público |
-| versão | **1.2.3**, commit `dda16e1`, release `v1.2.0` no GitHub |
-| submissão | issue [#6530](https://github.com/omacom/omarchy-plugin-marketplace/issues/6530), aberta, labels `submission, validated` |
-| validação automática | ✅ no `dda16e1` — "Ready for listing review" |
-| baseline de segurança | ✅ `passed` no `dda16e1`, sem achados e sem capacidades |
-| revisão humana | três rodadas com `HANCORE-linux` (COLLABORATOR), todas respondidas — seção 3b |
+| versão | **1.2.4**, release `v1.2.0` no GitHub |
+| submissão | issue [#6530](https://github.com/omacom/omarchy-plugin-marketplace/issues/6530), aberta, labels `submission, validated, needs-fixes` |
+| validação automática | ✅ no `a574648` — "Ready for listing review"; a re-disparar no commit desta rodada |
+| baseline de segurança | ✅ `passed` no `a574648`, sem achados e sem capacidades; idem |
+| revisão humana | **quatro** rodadas com `HANCORE-linux` (COLLABORATOR), todas respondidas — seção 3b |
 | falta | a decisão de mantenedor: o label `approved-and-verified`, que só eles aplicam |
 
 **A regra que congela o repo até lá:** o HEAD tem que continuar igual ao commit
@@ -174,7 +174,7 @@ Custo: o plugin passou a depender de `python3`. É a única dependência de temp
 de execução além do Omarchy, e os scripts do próprio Omarchy já usam python3 —
 está declarado nos dois READMEs.
 
-`make hostile` (28 verificações) é o teste dos cenários dele, inclusive os dois
+`make hostile` (46 verificações hoje) é o teste dos cenários dele, inclusive os dois
 que fecharam a última rodada: **symlink no meio do caminho** e **hardlink**.
 
 A lição que vale registrar: "não dá neste stack" é uma afirmação sobre o que eu
@@ -231,6 +231,48 @@ No lugar da promessa falsa entrou uma garantia real: **gravar ao fechar a
 sala**. O pior caso de um encerramento abrupto passou de "até dez minutos" para
 "o que aconteceu desde que você fechou a janela".
 
+### Quarta rodada: dono não é permissão
+
+Com o `save.py` aceito na leitura, na gravação e na publicação, o que sobrou foi
+o modo dos diretórios:
+
+> `save.py:75-82` validates directory type and owner but never rejects group- or
+> world-writable modes. `walk()` therefore accepts an existing user-owned
+> writable-by-others component (including the final state directory) and then
+> trusts that directory for `save.json` reads, replacement, and cleanup.
+
+Procedente, e é o ponto cego de quem confere identidade: toda a defesa do
+`save.py` prova **qual** diretório é aquele, e nenhuma linha perguntava **quem
+mais pode escrever nele**. Um `~/.local/share` em 775 não precisa de symlink, de
+corrida nem de hardlink — outra conta cria o `save.json` ali dentro e o helper
+abre o fd certo, do diretório certo, com o conteúdo dela.
+
+O conserto tem dois lados, e a diferença entre eles importa:
+
+- **os componentes do meio** (`$HOME`, `.local`, `.local/share`) são recusados se
+  tiverem `S_IWGRP` ou `S_IWOTH` — o teste entra no mesmo `fstat` que já conferia
+  o dono, então não custa syscall nova nem abre janela. Apertar o modo deles
+  seria decidir pelos outros: são diretórios de todo mundo, não do plugin;
+- **o diretório de estado do plugin** é apertado para 700 com `fchmod` no
+  descritor já validado, **antes** de qualquer leitura. Recusar ali seria pior
+  que o problema: a leitura voltaria vazia, a planta começaria do zero e a
+  gravação seguinte apagaria o save bom. Consertar mantém a planta e fecha o
+  diretório no mesmo movimento.
+
+O que o conserto **não** faz, e está dito no código: não desfaz o que outra conta
+já tenha escrito ali antes. O que pega isso continua sendo o cheque do arquivo no
+fd (dono e `st_nlink == 1`).
+
+`make hostile` foi de 29 para 46 verificações. As novas: componente gravável por
+grupo e por outros (recusa na leitura e na gravação, com o save intacto depois),
+`$HOME` gravável por outros, diretório do plugin em 770 e em 777 (lê e sai em
+700), e criação sob `umask 000` — que prova que o `0o700` do `mkdir` não depende
+do umask de quem chama, já que o umask só tira bits.
+
+O próprio `Palco` do teste passou a fixar o modo de cada componente: `makedirs`
+só aplica o modo pedido na folha, e os do meio sairiam do umask da máquina — com
+`umask 002` o teste reprovaria por causa do ambiente, e não do helper.
+
 ## 4. A baseline de segurança
 
 O scan é estático (até 1000 arquivos, 8 MiB) e procura cinco padrões que
@@ -253,10 +295,11 @@ Um plugin sem achados e sem capacidades de revisão recebe `passed`
 automaticamente depois da aprovação. Este deve ser esse caso.
 
 O que o scan **vai** ver e é bom que esteja explicado no código (e está): o
-plugin roda `sh -c` para quatro coisas, todas locais e todas sobre o próprio
-diretório de save — `cat` para ler, `mkdir -p` + `mv` para gravar de forma
-atômica, e um `find -delete` de `.tmp` velho. Nenhuma delas toca em nada fora de
-`~/.local/share/zed.ganja/`.
+plugin lança `/usr/bin/python3 -I save.py`, sempre com `clearEnvironment` e
+`{PATH, HOME}`, para ler, gravar e limpar temporário — três `Process`
+supervisionados, nenhum lançamento destacado, e nada fora de
+`~/.local/share/zed.ganja/`. Não há mais `sh` nenhum no plugin desde a segunda
+rodada da revisão.
 
 ## 5. Submetido em 12/09/2026
 

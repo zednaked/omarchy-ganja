@@ -297,6 +297,14 @@ What it guarantees, and how:
   fail rather than follow. That fd is then held through the read, the write, the
   fsync, the rename and the cleanup, so nothing is re-resolved from the root
   afterwards;
+- **no directory on that path may be writable by group or others.** Identity and
+  ownership are not enough: whoever can write to a directory replaces the file
+  inside it without owning anything, and the descriptor would then be the right
+  fd of the right directory holding someone else's save. Every component is
+  checked for the mode in the same `fstat` that checks the owner. The plugin's
+  own state directory — the only one it creates — is tightened to 700 instead of
+  refused, because refusing to read it would start the plant from zero and the
+  next write would erase the good save;
 - **the file is validated on the fd it will be read from** — `fstat` says
   regular file (which rules out FIFOs, sockets and devices), owned by us,
   exactly one link (so a hardlink to someone else's file is refused), and within
@@ -325,7 +333,8 @@ every command re-resolves the path, so `[ -f ]` followed by `head`/`mv` is two
 resolutions with a window between them, and `sh` cannot reach `openat`,
 `renameat` or `O_NOFOLLOW`. Python can. `make hostile` throws all of it back:
 FIFO, symlink at the leaf, symlink mid-path, hardlink, oversized save, planted
-temp file.
+temp file, a group- or world-writable directory mid-path, and a loose mode on
+our own directory.
 
 **This is why the plugin needs `python3`** — the only runtime dependency beyond
 Omarchy itself, and one Omarchy's own scripts already have.
@@ -385,14 +394,14 @@ make check     # the LCG and 64-bit division against Node's BigInt
 make diff      # today's output against the fixtures in test/frames/
 make verify    # the fixtures against the QML JS engine
 make state     # the real Grow.qml: stopping, language, what the save carries
-make hostile   # FIFO, symlink, mid-path symlink, hardlink, oversized save
+make hostile   # FIFO, symlink, mid-path symlink, hardlink, loose modes, big save
 make glyphs    # the eight bar icons against the installed font
 ```
 
 - **Verified:** the hand-rolled 64-bit arithmetic matches `BigInt` over 14 seeds
   × 4000 steps; the QML engine reproduces the 64 reference frames character for
   character; the eight bar glyphs are the right drawings in the installed font;
-  and the real `Grow.qml` passes 28 state checks, including that a binding
+  and the real `Grow.qml` passes 47 state checks, including that a binding
   calling `Grow.t()` re-evaluates when the language changes — without that the
   screen would sit in two languages and nothing would show up in the log.
 - **Not verified:** the `diff` against the **actual Ganja-TUI**. That needs a

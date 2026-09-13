@@ -13,6 +13,7 @@ lugar, nem espera infinita:
   hardlink para fora               nao pode ser lido (st_nlink != 1)
   save maior que o teto            recusado inteiro, nao truncado
   temporario plantado              nao pode ser reutilizado
+  diretorio gravavel por outros    no meio do caminho recusa; o nosso e apertado
   diretorio de outro dono          nao da para testar sem root; esta no codigo
 
 Cada caso roda num $HOME temporario proprio - um teste que mexesse no HOME de
@@ -73,6 +74,15 @@ class Palco:
         self.home = tempfile.mkdtemp()
         self.dados = os.path.join(self.home, REL)
         os.makedirs(self.dados, 0o700, exist_ok=True)
+        # Modo explicito em cada componente: `makedirs` so aplica o modo pedido
+        # na folha, e os do meio sairiam do umask de quem esta rodando o teste.
+        # Com umask 002 eles nasceriam 775, e o helper - com razao - recusaria
+        # tudo. O teste tem que medir o helper, nao o umask da maquina.
+        for caminho in (self.home,
+                        os.path.join(self.home, ".local"),
+                        os.path.join(self.home, ".local/share"),
+                        self.dados):
+            os.chmod(caminho, 0o700)
         return self
 
     def __exit__(self, *_):
@@ -142,6 +152,63 @@ with Palco() as p:
     verifica("componente-symlink recusa a gravacao", 1, r.returncode)
     verifica("e nada foi criado do outro lado", [], os.listdir(fora))
     verifica("leitura tambem nao segue", b"", p.le().stdout)
+
+# ---- diretorio gravavel por grupo/outros NO MEIO do caminho ----------------
+# Ser dono do diretorio nao basta: quem escreve nele troca o arquivo de dentro
+# sem ser dono de nada. Os componentes do meio sao de todo mundo, nao nossos -
+# entao aqui e recusa, e nao conserto.
+for bit, nome in ((stat.S_IWGRP, "grupo"), (stat.S_IWOTH, "outros")):
+    with Palco() as p:
+        p.grava()
+        meio = os.path.join(p.home, ".local/share")
+        os.chmod(meio, 0o700 | bit)
+
+        verifica("componente gravavel por %s nao e lido" % nome, b"", p.le().stdout)
+        r = p.grava('{"outro":"conteudo"}')
+        verifica("componente gravavel por %s recusa a gravacao" % nome, 1, r.returncode)
+
+        os.chmod(meio, 0o700)
+        verifica("e o save de antes continua intacto", JSON, p.le().stdout.decode())
+
+# ---- $HOME gravavel por outros ---------------------------------------------
+# A raiz de confianca e o unico caminho aberto por nome; se ela estiver aberta,
+# nao ha o que garantir abaixo dela.
+with Palco() as p:
+    os.chmod(p.home, 0o707)
+    verifica("HOME gravavel por outros recusa a gravacao", 1, p.grava().returncode)
+    verifica("e nao le", b"", p.le().stdout)
+
+# ---- o nosso diretorio, frouxo: conserta em vez de recusar -----------------
+# Recusar aqui custaria a planta de quem instalou: a leitura voltaria vazia, o
+# plugin comecaria do zero e a gravacao seguinte apagaria o save bom.
+with Palco() as p:
+    p.grava()
+    os.chmod(p.dados, 0o770)
+
+    verifica("diretorio frouxo ainda le o save", JSON, p.le().stdout.decode())
+    verifica("e sai apertado em 700", 0o700, stat.S_IMODE(os.stat(p.dados).st_mode))
+
+    os.chmod(p.dados, 0o777)
+    verifica("gravacao tambem aperta", 0, p.grava().returncode)
+    verifica("modo depois da gravacao", 0o700, stat.S_IMODE(os.stat(p.dados).st_mode))
+
+# ---- criacao sob umask permissivo ------------------------------------------
+# `mkdir(0o700)` passa pelo umask, que so tira bits: nem um umask 000 afrouxa o
+# que nao foi pedido. Aqui e o contrario do resto do arquivo - o teste existe
+# para provar que a garantia nao depende de quem chama.
+with Palco() as p:
+    shutil.rmtree(os.path.join(p.home, ".local"))
+    r = subprocess.run(
+        [sys.executable, "-I", HELPER, "write", REL],
+        input=JSON.encode(), capture_output=True, timeout=20,
+        env={"HOME": p.home, "PATH": "/usr/bin:/bin"},
+        preexec_fn=lambda: os.umask(0o000),
+    )
+    verifica("grava com umask 000", 0, r.returncode)
+    for rel in (".local", ".local/share", REL):
+        verifica("criado 700: %s" % rel, 0o700,
+                 stat.S_IMODE(os.stat(os.path.join(p.home, rel)).st_mode))
+    verifica("e o save 600", 0o600, stat.S_IMODE(os.stat(p.save()).st_mode))
 
 # ---- hardlink para um arquivo de fora --------------------------------------
 # Um hardlink nao e symlink e passaria por qualquer cheque de link: o que o pega
