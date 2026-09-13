@@ -270,8 +270,10 @@ Item {
         left: room.headFits ? undefined : parent.left
       }
       // Abaixo disto a sala e estreita demais para uma frase a mais de qualquer
-      // forma, e a planta e o motivo da janela existir.
-      visible: room.width >= 560
+      // forma, e a planta e o motivo da janela existir. A excecao e a gravacao
+      // falhando: essa aparece em qualquer largura, porque e a unica frase aqui
+      // que fala de perder a planta, e nao de como ela esta.
+      visible: Grow.saveError !== "" || room.width >= 560
       // O cabecalho ja escreve "·· TURBO 130000x ··" e "·· demonstracao ··".
       // Repetir a palavra aqui gastava a unica linha que tem espaco para dizer o
       // que ela SIGNIFICA.
@@ -285,7 +287,11 @@ Item {
       // A demonstracao mantem o dela: "nada disto conta" nao e aviso de risco, e
       // a unica coisa que separa os dois modos rapidos, e quem liga a demo liga
       // justamente para nao contar.
-      text: room.ui.status !== "" ? room.ui.status
+      // Na frente de tudo: enquanto a gravacao estiver sendo recusada, nada mais
+      // nesta linha importa tanto quanto avisar que o que esta na tela nao esta
+      // indo para o disco. Sai sozinha na primeira gravacao boa.
+      text: Grow.saveError !== "" ? Grow.t("room.saveFailed")
+          : room.ui.status !== "" ? room.ui.status
           : Grow.paused ? Grow.t("room.pausedMeaning")
           : Grow.fast ? Grow.t("room.demoMeaning")
           : (Grow.ready ? Grow.t("room.readyStatus")
@@ -294,7 +300,8 @@ Item {
       // ninguem pedir, porque e o unico estado em que nada mais vai acontecer ate
       // alguem agir. E o ambar de "pronta para colher" sai: parada, a colheita
       // nao esta esperando, ela esta congelada junto.
-      color: room.ui.status !== "" ? room.ui.inkBright
+      color: Grow.saveError !== "" ? "#e05a4f"
+           : room.ui.status !== "" ? room.ui.inkBright
            : (Grow.ready && !Grow.paused ? "#ffd166" : room.ui.inkDim)
       font.family: room.ui.mono
       font.pixelSize: 12

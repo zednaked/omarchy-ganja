@@ -64,7 +64,10 @@ ShellRoot {
     var horasAntes = G.plant.total_hours_elapsed
     G.setPaused(true)
     root.eq("parou", G.paused, true)
-    G.tick()                      // o tick que o Timer nao vai mais disparar
+    // O tick que o Timer nao vai mais disparar - e que, chamado a mao, tambem
+    // nao anda: a guarda esta no proprio `tick`, e nao so no `running` do Timer.
+    G.lastTickMs = Date.now() - 60000     // um minuto inteiro de atraso a cobrar
+    G.tick()
     root.eq("parada, o tick nao anda", G.plant.total_hours_elapsed, horasAntes)
     root.eq("parada, nada de alerta", G.alerting, false)
 
@@ -153,6 +156,33 @@ ShellRoot {
     root.eq("colheita nova soma", G.lifetime.grams, antes + 5)
     root.eq("recorde nao cai por colheita pequena", G.lifetime.best_grams, 30)
     root.eq("primeira colheita nao muda", G.lifetime.first_at, "2026-09-01T10:00:00Z")
+
+    // ---- save que nao e save ----------------------------------------------
+    // `"current_plant": 5` passava no teste antigo (so truthy) e virava planta
+    // quebrada, publicada e gravada por cima da boa.
+    var boa = G.plant
+    root.eq("planta nao-objeto e recusada", G.adopt({ current_plant: 5 }, true), false)
+    root.eq("e a planta boa continua", G.plant, boa)
+    root.eq("sem current_plant e recusado", G.adopt({ harvest_history: [] }, true), false)
+    root.eq("nao-objeto no topo e recusado", G.adopt("{}", true), false)
+
+    // ---- o teto de 100 vale na leitura tambem ------------------------------
+    // Um save gordo entrava inteiro e era re-serializado em cada gravacao, ate
+    // passar do teto de 1 MiB do helper - e dai nao gravava mais nada.
+    var gorda = []
+    for (var i = 0; i < 150; i++)
+      gorda.push({ strain_name: "S" + i, weight_grams: 1, quality_score: 50,
+                   thc_percent: 1, cbd_percent: 0, harvest_day: 96,
+                   completed_at: "2026-09-01T10:00:00Z" })
+    G.adopt({ current_plant: boa, harvest_history: gorda, total_harvests: 150 }, true)
+    root.eq("lista gorda e cortada na leitura", G.harvests.length, 100)
+    root.eq("e o que fica sao as mais novas", G.harvests[99].strain_name, "S149")
+    root.eq("o acumulado ainda conta o que sobrou", G.snapshot().harvest_history.length, 100)
+
+    // ---- o aviso de gravacao recusada --------------------------------------
+    // O estado comeca limpo; o caminho que o acende e o codigo de saida do
+    // helper, coberto em test/hostile.py do lado de la.
+    root.eq("sem erro de gravacao no comeco", G.saveError, "")
 
     // ---- o save leva tudo isso de volta ------------------------------------
     G.setLang("pt")

@@ -370,6 +370,12 @@ O que ele garante, e como:
 - **limitado e com prazo:** 1 MiB na leitura e na escrita, `SIGALRM` em cinco
   segundos, e `-I` para o interpretador ignorar `PYTHON*`, o site do usuário e o
   diretório do próprio script;
+- **recusa aparece.** O código de saída e o stderr do helper são lidos em toda
+  chamada: gravação recusada acende uma linha vermelha na sala ("não está
+  gravando no disco") até uma gravação dar certo, e toda recusa vai para o log.
+  Isto existe porque os cheques acima *recusam* — um `~/.local/share` gravável
+  por outros passou a parar o save, e parada que ninguém conta custa a planta
+  em silêncio;
 - **ambiente fechado em todo caminho que existe.** Os três `Process` usam
   `clearEnvironment` com `PATH` e `HOME` e mais nada. Não há um quarto caminho:
   o plugin não faz lançamento destacado nenhum (ver abaixo), então nada roda
@@ -447,6 +453,7 @@ make check     # o LCG e as divisões de 64 bits contra o BigInt do Node
 make diff      # a saída de hoje contra as fixtures de test/frames/
 make verify    # as fixtures contra o motor de JS do QML
 make state     # o Grow.qml de verdade: parada, idioma e o que o save leva
+make refused   # gravação recusada acende o aviso em vez de sumir
 make hostile   # FIFO, symlink, symlink no meio, hardlink, modo frouxo, save gigante
 make glyphs    # os oito ícones da barra contra a fonte instalada
 ```
@@ -456,7 +463,7 @@ make glyphs    # os oito ícones da barra contra a fonte instalada
   caractere por caractere idênticos aos do Node; os oito glifos da barra são os
   desenhos certos na fonte instalada — `make glyphs` existe porque a primeira
   versão pôs um logo de open source no lugar da muda, sem erro nenhum; e o
-  `Grow.qml` de verdade passa por 47 verificações de estado (`make state`),
+  `Grow.qml` de verdade passa por 55 verificações de estado (`make state`),
   incluindo a de que uma binding que chama `Grow.t()` re-avalia quando o idioma
   muda — sem isso a tela ficaria em duas línguas e nada apareceria no log.
 - **Não verificado:** o `diff` contra o **Ganja-TUI de verdade**. Isso precisa de

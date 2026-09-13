@@ -7,6 +7,7 @@
 #   make verify    confere as fixtures dentro do motor de JS do QML
 #   make state     roda o Grow.qml de verdade e confere o que ele guarda
 #   make hostile   joga FIFO, symlink, hardlink e save gigante contra o save.py
+#   make refused   prova que uma gravacao recusada aparece na sala, e nao some
 #   make glyphs    confere os sete icones da barra contra a fonte instalada
 #   make test      check + diff + verify
 #
@@ -16,7 +17,7 @@
 GANJA_TUI ?= $(HOME)/Projetos/Ganja-TUI
 STRAINS_JSON := $(GANJA_TUI)/strains.json
 
-.PHONY: strains check frames diff verify state hostile glyphs test
+.PHONY: strains check frames diff verify state refused hostile glyphs test
 
 Strains.js: $(STRAINS_JSON) Makefile
 	@printf '.pragma library\n\n' > $@
@@ -56,6 +57,12 @@ verify:
 state:
 	@test/stage.sh state.qml
 
+# A gravacao recusada pelo save.py tem que APARECER: este roda o plugin de
+# verdade com o ~/.local/share do HOME temporario gravavel pelo grupo, que e o
+# que o helper recusa, e confere que o aviso acende em vez de sumir.
+refused:
+	@test/stage.sh refused.qml frouxo
+
 # Os cenarios que a revisao de seguranca do marketplace apontou na issue #6530,
 # inclusive o symlink no MEIO do caminho, que foi o ultimo a ser fechado.
 # Cada caso roda em HOME temporario proprio, como os outros testes.
@@ -65,4 +72,4 @@ hostile:
 glyphs:
 	@python3 test/glyphs.py
 
-test: check diff verify state hostile glyphs
+test: check diff verify state refused hostile glyphs

@@ -317,6 +317,11 @@ What it guarantees, and how:
 - **bounded and deadlined:** 1 MiB on reads and writes, `SIGALRM` after five
   seconds, and `-I` so the interpreter ignores `PYTHON*`, user site-packages and
   the script's own directory;
+- **a refusal is visible.** The helper's exit code and stderr are read on every
+  launch: a refused write lights a red line in the room ("not saving to disk")
+  until a write succeeds, and every refusal is logged. This exists because the
+  checks above can refuse — a `~/.local/share` writable by others now stops the
+  save, and a stop nobody is told about costs the plant in silence;
 - **a closed environment, on every path there is.** All three `Process` objects
   use `clearEnvironment` with `PATH` and `HOME` and nothing else. There is no
   fourth path: the plugin makes no detached launches at all (see below), so
@@ -394,6 +399,7 @@ make check     # the LCG and 64-bit division against Node's BigInt
 make diff      # today's output against the fixtures in test/frames/
 make verify    # the fixtures against the QML JS engine
 make state     # the real Grow.qml: stopping, language, what the save carries
+make refused   # a refused write lights the warning instead of vanishing
 make hostile   # FIFO, symlink, mid-path symlink, hardlink, loose modes, big save
 make glyphs    # the eight bar icons against the installed font
 ```
@@ -401,7 +407,7 @@ make glyphs    # the eight bar icons against the installed font
 - **Verified:** the hand-rolled 64-bit arithmetic matches `BigInt` over 14 seeds
   × 4000 steps; the QML engine reproduces the 64 reference frames character for
   character; the eight bar glyphs are the right drawings in the installed font;
-  and the real `Grow.qml` passes 47 state checks, including that a binding
+  and the real `Grow.qml` passes 55 state checks, including that a binding
   calling `Grow.t()` re-evaluates when the language changes — without that the
   screen would sit in two languages and nothing would show up in the log.
 - **Not verified:** the `diff` against the **actual Ganja-TUI**. That needs a

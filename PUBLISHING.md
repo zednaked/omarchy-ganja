@@ -17,7 +17,7 @@ O diretório do marketplace tem dois endereços para a mesma coisa:
 | | |
 |---|---|
 | repo | <https://github.com/zednaked/omarchy-ganja>, público |
-| versão | **1.2.4**, release `v1.2.0` no GitHub |
+| versão | **1.2.5**, release `v1.2.0` no GitHub |
 | submissão | issue [#6530](https://github.com/omacom/omarchy-plugin-marketplace/issues/6530), aberta, labels `submission, validated, needs-fixes` |
 | validação automática | ✅ no `a574648` — "Ready for listing review"; a re-disparar no commit desta rodada |
 | baseline de segurança | ✅ `passed` no `a574648`, sem achados e sem capacidades; idem |
@@ -174,7 +174,7 @@ Custo: o plugin passou a depender de `python3`. É a única dependência de temp
 de execução além do Omarchy, e os scripts do próprio Omarchy já usam python3 —
 está declarado nos dois READMEs.
 
-`make hostile` (46 verificações hoje) é o teste dos cenários dele, inclusive os dois
+`make hostile` (46 verificações hoje, mais `make refused` do lado do QML) é o teste dos cenários dele, inclusive os dois
 que fecharam a última rodada: **symlink no meio do caminho** e **hardlink**.
 
 A lição que vale registrar: "não dá neste stack" é uma afirmação sobre o que eu
@@ -268,6 +268,23 @@ grupo e por outros (recusa na leitura e na gravação, com o save intacto depois
 `$HOME` gravável por outros, diretório do plugin em 770 e em 777 (lê e sai em
 700), e criação sob `umask 000` — que prova que o `0o700` do `mkdir` não depende
 do umask de quem chama, já que o umask só tira bits.
+
+**E o conserto abriu um buraco que já existia.** Endurecer aumenta o número de
+motivos para recusar — e do lado do QML nenhum dos três `Process` coletava o
+`stderr`, e o `onExited` do writer ignorava o código de saída. Ou seja: um
+`~/.local/share` em 775 passava a custar a planta **em silêncio**, que é pior
+que o problema que a recusa resolve. Agora o código de saída é lido em toda
+chamada, a recusa acende uma linha vermelha na sala ("não está gravando no
+disco") até uma gravação dar certo, e `make refused` prova isso rodando o plugin
+de verdade com o diretório frouxo.
+
+Na mesma revisão saíram mais três coisas do conteúdo do save, que é a outra
+fronteira de estado: o teto de 100 colheitas agora vale **na leitura** (um save
+gordo era re-serializado a cada gravação até passar do 1 MiB e travar o save
+para sempre), `current_plant` que não é objeto é recusado em vez de virar planta
+quebrada gravada por cima da boa, e o `tick()` ganhou a guarda de parada que só
+existia no `running` do Timer — o teste que a provava passava por sorte de
+milissegundo.
 
 O próprio `Palco` do teste passou a fixar o modo de cada componente: `makedirs`
 só aplica o modo pedido na folha, e os do meio sairiam do umask da máquina — com

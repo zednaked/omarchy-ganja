@@ -27,6 +27,10 @@
 set -euo pipefail
 
 arquivo=${1:?uso: test/stage.sh <arquivo.qml>}
+# O segundo argumento e o estado do disco em que o teste roda. `frouxo` deixa o
+# ~/.local/share gravavel pelo grupo: e o que o save.py recusa, e o unico jeito
+# de provar do lado do QML que a recusa aparece na tela em vez de sumir.
+disco=${2:-normal}
 raiz=$(cd "$(dirname "$0")/.." && pwd)
 
 palco=$(mktemp -d)
@@ -34,6 +38,10 @@ trap 'rm -rf "$palco"' EXIT
 mkdir -p "$palco/plugin" "$palco/home"
 
 cp "$raiz"/*.qml "$raiz"/*.js "$raiz"/*.py "$raiz"/qmldir "$palco/plugin/"
+if [ "$disco" = frouxo ]; then
+  mkdir -p "$palco/home/.local/share"
+  chmod 0775 "$palco/home/.local/share"
+fi
 cp "$raiz/test/$arquivo" "$palco/plugin/"
 [ -d "$raiz/test/frames" ] && cp -r "$raiz/test/frames" "$palco/plugin/"
 

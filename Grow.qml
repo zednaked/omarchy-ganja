@@ -353,6 +353,12 @@ Singleton {
 
   function tick() {
     if (!root.plant) return
+    // Parada, o relogio nao anda - e isso e dito AQUI, e nao so no `running` do
+    // Timer. Enquanto a unica guarda foi "o Timer nao dispara", a promessa da
+    // parada dependia de ninguem mais chamar `tick()`; e o proprio teste chama,
+    // para provar que nao anda. Sem esta linha ele so passava porque o relogio
+    // do `setPaused` e o da chamada caiam no mesmo milissegundo.
+    if (root.paused) return
     var now = Date.now()
     // DIVERGE 1 (SPEC 4b): o relogio e de sessao, nao de parede. O delta e
     // medido de verdade para o tick nao ficar devendo quando o sistema atrasa o
@@ -805,9 +811,23 @@ Singleton {
   }
 
   function adopt(data, fromDisk) {
-    if (!data || !data.current_plant) return false
+    // `typeof` e nao so truthy: um `"current_plant": 5` passaria pelo teste
+    // antigo, e dai o preenchimento de campos velhos la embaixo cairia no vazio
+    // - atribuir propriedade a um numero nao da erro em JS, nao faz nada. A
+    // planta quebrada seria publicada e, na gravacao seguinte, escrita por cima
+    // da boa. Save que nao e save comeca de novo, que e o que o chamador ja
+    // sabe fazer.
+    if (!data || typeof data !== "object") return false
+    if (!data.current_plant || typeof data.current_plant !== "object") return false
     root.plant = data.current_plant
-    root.harvests = Array.isArray(data.harvest_history) ? data.harvest_history : []
+
+    // O teto de 100 tambem vale na LEITURA, e nao so na colheita: um save gordo
+    // - colado a mao, vindo do TUI, restaurado de backup - entrava inteiro e era
+    // re-serializado a cada gravacao. Passando de 1 MiB o save.py recusa toda
+    // escrita dali para a frente, e o plugin continuaria jogando sem gravar.
+    var hs = Array.isArray(data.harvest_history) ? data.harvest_history : []
+    if (hs.length > 100) hs = hs.slice(hs.length - 100)
+    root.harvests = hs
     root.totalHarvests = data.total_harvests || 0
     root.userScale = Number(data.time_scale) > 0 ? Number(data.time_scale) : 0
     root.lifetime = root.adoptLifetime(data)
@@ -849,6 +869,14 @@ Singleton {
     command: ["/usr/bin/python3", "-I", root.helper, "read", root.relDir, root.relLegacy]
     clearEnvironment: true
     environment: root.helperEnv
+    // Sem save o helper sai com 0 e sem nada no stdout - primeira carga nao e
+    // erro. Sair diferente de zero e recusa, e recusa na leitura vira planta
+    // nova: se ninguem disser por que, a perda parece do plugin.
+    stderr: StdioCollector { id: readerErr; waitForEnd: true }
+    onExited: (exitCode, exitStatus) => {
+      if (exitCode !== 0)
+        console.warn("zed.ganja: leitura recusada:", String(readerErr.text).trim() || ("exit " + exitCode))
+    }
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -894,6 +922,11 @@ Singleton {
     command: ["/usr/bin/python3", "-I", root.helper, "read", root.relDir]
     clearEnvironment: true
     environment: root.helperEnv
+    stderr: StdioCollector { id: rereaderErr; waitForEnd: true }
+    onExited: (exitCode, exitStatus) => {
+      if (exitCode !== 0)
+        console.warn("zed.ganja: releitura recusada:", String(rereaderErr.text).trim() || ("exit " + exitCode))
+    }
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -917,6 +950,13 @@ Singleton {
   property string pending: ""
   property bool dirty: false
 
+  // A gravacao recusada era MUDA: nada coletava o stderr do helper e o
+  // `onExited` ignorava o codigo de saida. O plugin seguia jogando e nunca mais
+  // gravava - e o motivo de recusar aumentou quando o modo do diretorio entrou
+  // na validacao, entao um `~/.local/share` em 775 custaria a planta em
+  // silencio. Aqui fica o ultimo motivo, e ele some na primeira gravacao boa.
+  property string saveError: ""
+
   Process {
     id: writer
     stdinEnabled: true
@@ -937,7 +977,14 @@ Singleton {
       // tempo - com o arquivo certo em disco, com o nome errado.
       writer.stdinEnabled = false
     }
-    onExited: {
+    stderr: StdioCollector { id: writerErr; waitForEnd: true }
+    onExited: (exitCode, exitStatus) => {
+      if (exitCode !== 0) {
+        root.saveError = String(writerErr.text).trim() || ("exit " + exitCode)
+        console.warn("zed.ganja: gravacao recusada:", root.saveError)
+      } else if (root.saveError !== "") {
+        root.saveError = ""
+      }
       if (root.dirty) { root.dirty = false; root.flush() }
     }
   }
