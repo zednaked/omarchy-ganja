@@ -17,7 +17,7 @@ O diretório do marketplace tem dois endereços para a mesma coisa:
 | | |
 |---|---|
 | repo | <https://github.com/zednaked/omarchy-ganja>, público |
-| versão | **1.2.5**, release `v1.2.0` no GitHub |
+| versão | **1.2.6**, release `v1.2.0` no GitHub |
 | submissão | issue [#6530](https://github.com/omacom/omarchy-plugin-marketplace/issues/6530), aberta, labels `submission, validated, needs-fixes` |
 | validação automática | ✅ no `a574648` — "Ready for listing review"; a re-disparar no commit desta rodada |
 | baseline de segurança | ✅ `passed` no `a574648`, sem achados e sem capacidades; idem |
