@@ -6,6 +6,8 @@
 #   make diff      compara a saida de hoje com as fixtures
 #   make verify    confere as fixtures dentro do motor de JS do QML
 #   make state     roda o Grow.qml de verdade e confere o que ele guarda
+#   make dev       poe a arvore de trabalho na barra (sem push) e reinicia o shell
+#   make dev-off   devolve o clone instalado ao que esta publicado
 #   make hostile   joga FIFO, symlink, hardlink e save gigante contra o save.py
 #   make refused   prova que uma gravacao recusada aparece na sala, e nao some
 #   make glyphs    confere os sete icones da barra contra a fonte instalada
@@ -17,7 +19,7 @@
 GANJA_TUI ?= $(HOME)/Projetos/Ganja-TUI
 STRAINS_JSON := $(GANJA_TUI)/strains.json
 
-.PHONY: strains check frames diff verify state refused hostile glyphs test
+.PHONY: strains check frames diff verify state refused hostile glyphs test dev dev-off dev-status
 
 Strains.js: $(STRAINS_JSON) Makefile
 	@printf '.pragma library\n\n' > $@
@@ -38,6 +40,37 @@ Strains.js: $(STRAINS_JSON) Makefile
 	@echo "Strains.js: $$(jq 'length' $(STRAINS_JSON)) strains"
 
 strains: Strains.js
+
+# ---- rodar a arvore de trabalho na maquina, sem empurrar nada ---------------
+#
+# O Omarchy instala o plugin como um CLONE deste repo. Enquanto a submissao ao
+# marketplace estiver aberta, o HEAD publico tem que continuar igual ao commit
+# validado - entao testar na barra nao pode depender de `git push` + `omarchy
+# plugin update`. O `make dev` copia por cima do clone os arquivos que vao
+# instalados, inclusive o que ainda nao foi commitado, e reinicia o shell.
+#
+# O `make dev-off` devolve o clone ao que esta publicado. Vale rodar antes de
+# `omarchy plugin update`: com o diretorio sujo o update nao tem como avancar.
+PLUGIN_DIR ?= $(HOME)/.config/omarchy/plugins/zed.ganja
+SHIP = $(wildcard *.qml) $(wildcard *.js) $(wildcard *.py) qmldir manifest.json preview.png
+
+dev:
+	@test -d "$(PLUGIN_DIR)/.git" || { echo "nao ha clone em $(PLUGIN_DIR)"; exit 1; }
+	@cp -f $(SHIP) "$(PLUGIN_DIR)/"
+	@echo "dev: $(PLUGIN_DIR) esta com a arvore de trabalho ($$(git rev-parse --short HEAD), $$(git status --porcelain | wc -l) arquivo(s) sujo(s) aqui)"
+	@omarchy-restart-shell
+
+dev-off:
+	@git -C "$(PLUGIN_DIR)" checkout -- .
+	@git -C "$(PLUGIN_DIR)" clean -fdq
+	@echo "dev-off: de volta a $$(git -C "$(PLUGIN_DIR)" log --oneline -1)"
+	@omarchy-restart-shell
+
+# O que esta rodando na barra agora, em relacao ao que esta aqui.
+dev-status:
+	@echo "instalado: $$(git -C "$(PLUGIN_DIR)" log --oneline -1)"
+	@echo "sujo la:   $$(git -C "$(PLUGIN_DIR)" status --porcelain | wc -l) arquivo(s)"
+	@echo "aqui:      $$(git log --oneline -1)"
 
 check:
 	@node test/run.js check
