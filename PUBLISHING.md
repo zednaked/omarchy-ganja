@@ -24,6 +24,9 @@ O diretório do marketplace tem dois endereços para a mesma coisa:
 | revisão humana | **quatro** rodadas com `HANCORE-linux` (COLLABORATOR), todas respondidas — seção 3b |
 | falta | a decisão de mantenedor: o label `approved-and-verified`, que só eles aplicam |
 
+Em **14/09** o label `needs-fixes` caiu: a issue está com `submission, validated`,
+e desde a última resposta (13/09 16:22) não houve movimento do outro lado.
+
 **A regra que congela o repo até lá:** o HEAD tem que continuar igual ao commit
 validado. Se empurrar qualquer coisa, edite o corpo da issue para re-disparar as
 duas checagens — senão o site marca "Update unverified", que é o snapshot
@@ -360,10 +363,10 @@ Feito antes de submeter, e por quê:
 
 ## 6. O que continua em aberto
 
-**O `diff` contra o Ganja-TUI de verdade.** Precisa de uma máquina com `cargo`,
-rodando o TUI com as mesmas 8 seeds e os mesmos 8 dias e comparando com
-`test/frames/`. Enquanto isso não acontecer, a fidelidade é declarada e não
-comprovada — e o README diz isso com essas palavras. Ver `test/README.md`.
+**O `diff` contra o Ganja-TUI de verdade** — **fechado em 14/09/2026**. O lado
+Rust ganhou `examples/dump_frames.rs`, e os 64 frames saíram idênticos,
+caractere a caractere. Os dois READMEs deixaram de dizer "declarada, não
+comprovada". Ver `test/README.md`.
 
 **A otimização do quadro.** 30 ms de CPU para desenhar 70×28 caracteres é caro
 em uma ordem de grandeza; a causa provável é regerar a matriz inteira a cada

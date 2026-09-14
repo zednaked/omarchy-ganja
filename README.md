@@ -410,10 +410,12 @@ make glyphs    # the eight bar icons against the installed font
   and the real `Grow.qml` passes 55 state checks, including that a binding
   calling `Grow.t()` re-evaluates when the language changes — without that the
   screen would sit in two languages and nothing would show up in the log.
-- **Not verified:** the `diff` against the **actual Ganja-TUI**. That needs a
-  machine with `cargo`, running the TUI with the same 8 seeds and 8 days and
-  comparing against `test/frames/`. Until that happens, fidelity here is
-  **declared, not proven**. See `test/README.md`.
+- **Verified (14/09/2026):** the `diff` against the **actual Ganja-TUI**. The Rust
+  side now ships `examples/dump_frames.rs`, which dumps
+  `get_plant_ascii(stage, day, seed, 0)` for the same 8 seeds and 8 days into the
+  format of `test/frames/`. All **64 of 64 frames are identical, character for
+  character**. Fidelity is no longer declared: it is diffed against the reference
+  implementation. See `test/README.md`.
 
 The QML tests run on a temporary copy of the plugin folder with a temporary
 `$HOME` (`test/stage.sh`): a test that ran against the real `$HOME` would write

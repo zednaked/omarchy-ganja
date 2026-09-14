@@ -41,20 +41,30 @@ Para regravar as fixtures depois de uma mudança intencional:
 make frames
 ```
 
-## O que ainda não foi feito
+## A quarta camada: contra o Rust
 
-**O `diff` contra o Ganja-TUI de verdade.** Nenhuma das três camadas acima
-compara com o Rust: elas comparam o plugin com ele mesmo em dois motores. A
-referência continua sendo `src/ascii/art.rs`, lido e traduzido à mão.
+**O `diff` contra o Ganja-TUI de verdade** — feito em 14/09/2026. As três camadas
+acima comparam o plugin com ele mesmo em dois motores; nenhuma compara com
+`src/ascii/art.rs`, que é a referência. Esta compara.
 
-Numa máquina com `cargo`:
+O lado Rust ganhou `examples/dump_frames.rs` (commit `d8e4164` no
+[Ganja-TUI](https://github.com/zednaked/Ganja-TUI)), que despeja
+`get_plant_ascii(stage, day, seed, 0)` para as mesmas 8 seeds e os mesmos 8 dias,
+no formato destas fixtures. O crate não tem `lib.rs`, então o exemplo monta
+`domain` e `ascii` com `#[path]` a partir dos arquivos que o jogo usa — é código
+de produção compilado ali dentro, não cópia.
 
-1. Instrumentar o Ganja-TUI para despejar `get_plant_ascii(stage, day, seed, 0)`
-   para as 8 seeds de `run.js` e os dias `1, 5, 15, 30, 46, 53, 70, 90`.
-   As seeds entram por `plant.id` — `seed = plant.id.as_u128() as u64`, ou seja
-   os 16 últimos dígitos hexadecimais do uuid.
-2. `diff -u frames/<seed>-<dia>.txt <saída do TUI>`.
-3. Divergência de um caractere é falha.
+```sh
+cd ../Ganja-TUI
+cargo run --release --example dump_frames -- /tmp/frames-rust
+diff -r /tmp/frames-rust ../omarchy-ganja/test/frames
+```
 
-Enquanto isso não acontecer, o README do plugin diz — e tem que continuar
-dizendo — que a fidelidade é **declarada e não verificada**.
+Resultado da primeira rodada: **64 de 64 idênticos, caractere a caractere** —
+incluindo as quatro transições de estágio (dias 46, 53, 70, 90) e a seed
+`ffffffffffffffff`, que é onde o LCG de 64 bits feito à mão em quatro limbs teria
+mais chance de divergir.
+
+As seeds e os dias estão escritos nos dois lados, e é assim de propósito: se um
+mudar, o `diff` não roda por engano com listas diferentes — ele acusa o arquivo
+que falta.

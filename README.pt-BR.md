@@ -466,10 +466,12 @@ make glyphs    # os oito ícones da barra contra a fonte instalada
   `Grow.qml` de verdade passa por 55 verificações de estado (`make state`),
   incluindo a de que uma binding que chama `Grow.t()` re-avalia quando o idioma
   muda — sem isso a tela ficaria em duas línguas e nada apareceria no log.
-- **Não verificado:** o `diff` contra o **Ganja-TUI de verdade**. Isso precisa de
-  uma máquina com `cargo`, rodando o TUI com as mesmas 8 seeds e os mesmos 8
-  dias e comparando com `test/frames/`. Enquanto esse passo não acontecer, a
-  fidelidade aqui é **declarada, não comprovada**. Ver `test/README.md`.
+- **Verificado (14/09/2026):** o `diff` contra o **Ganja-TUI de verdade**. O lado
+  Rust ganhou um `examples/dump_frames.rs` que despeja
+  `get_plant_ascii(stage, day, seed, 0)` para as mesmas 8 seeds e os mesmos 8
+  dias, no formato de `test/frames/`. Os **64 frames saíram idênticos, caractere
+  a caractere**. A fidelidade deixou de ser declarada: ela é conferida contra a
+  implementação de referência. Ver `test/README.md`.
 
 ---
 
