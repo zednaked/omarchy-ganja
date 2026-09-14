@@ -438,10 +438,13 @@ access to the singleton — are refused by `omarchy plugin validate`.
 
 Measured with the overlay open: 22–40% of one core at 10 frames per second, or
 ~30 ms of CPU per frame. That is expensive by an order of magnitude for drawing
-70×28 characters, and the cause is known — the character matrix is regenerated
-every frame when all that changes between frames is the trunk character, the
-color and the breathing. Caching it is the pending optimization; the 64-frame
-fidelity test is what guarantees the optimization does not change the plant.
+70×28 characters. What it is **not** is the character matrix: generating it costs
+**0.42 ms** per frame, measured inside QML's own engine with a real Canvas
+(`test/bench.qml`). Drawing it costs ten times that — 4.19 ms, one `fillText` per
+character — and everything that runs in JavaScript adds up to ~4.9 ms of the ~30.
+The rest is outside JavaScript, in the Canvas raster and texture upload. So the
+optimization worth doing is about the Canvas, not about caching the matrix, and
+it stays open.
 
 Closed — which is how it spends most of its life — the overlay costs nothing at
 all, and now `p` takes the other half to zero too.

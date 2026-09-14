@@ -7,6 +7,7 @@ então a conferência é caractere a caractere.
 frames/<seed>-<dia>.txt    8 seeds × 8 dias, 28 linhas de 70 caracteres, frame 0
 run.js                     o harness de Node
 verify.qml                 o harness do motor de JS do QML
+bench.qml                  onde vai o tempo de um quadro (`make bench`)
 Art.js                     symlink para ../Art.js
 ```
 
@@ -68,3 +69,31 @@ mais chance de divergir.
 As seeds e os dias estão escritos nos dois lados, e é assim de propósito: se um
 mudar, o `diff` não roda por engano com listas diferentes — ele acusa o arquivo
 que falta.
+
+
+## bench.qml — onde vai o tempo de um quadro
+
+Não é teste: não passa nem reprova, imprime a conta. Existe porque a seção 12 do
+`SPEC.md` atribuía os ~30 ms por quadro a "regerar a matriz inteira a cada
+quadro", e isso precisava ser medido em vez de suposto.
+
+```sh
+make bench
+```
+
+Ele desenha a planta num Canvas de verdade, dentro do V4, e cronometra cada parte
+separadamente: gerar a matriz, decidir a cor de cada célula, o preâmbulo
+(`ctx.reset()` mais os dois `measureText`), pintar um `fillText` por caractere, e
+pintar um `fillText` por trecho contíguo de mesma cor.
+
+Medido em 14/09/2026: gerar custa **0,42 ms** e pintar caractere a caractere
+custa **4,19 ms** — a geração é 8% do custo do desenho, e a causa que estava
+escrita no SPEC estava errada por três ordens de grandeza. O JavaScript inteiro
+soma ~4,9 ms dos ~30; o resto está fora dele, na rasterização do Canvas.
+
+O modo por trecho está no bench e **não** está no `Room.qml`: ele derruba o
+desenho para 1,78 ms, mas são 2,4 ms de ~30, e não consegui provar que os pixels
+saem idênticos — o Canvas mede `M` em 8,0 px e `MMMMMMMMMM` em 84,0, então o
+avanço dentro de uma string não é a largura do glifo solto, e uma fonte com
+ligaduras funde `//` quando os caracteres chegam juntos. As fixtures não veem
+isso: elas são texto. Enquanto não houver essa prova, a arte não muda.

@@ -401,14 +401,43 @@ Primeira medição real, no shell do Thiago (12 plugins carregados, 65 min de vi
 | **Custo por quadro** | **~30 ms de CPU** |
 
 **O conceito está certo e a implementação do quadro não.** 30 ms para desenhar
-70×28 caracteres é caro em uma ordem de grandeza. A causa provável é regerar a
-matriz inteira a cada quadro, quando o que muda entre quadros é o caractere do
-tronco, a cor e a respiração.
+70×28 caracteres é caro em uma ordem de grandeza.
 
-**Otimização pendente:** guardar a matriz de caracteres entre quadros e refazê-la
-só quando o dia avança. Alvo: ~3 ms por quadro. O teste de fidelidade existente
-(64 frames) é o que garante que a otimização não muda a planta — rodar `make
-test` antes e depois, e exigir os mesmos 64 arquivos idênticos.
+### Onde vão os 30 ms — medido em 14/09/2026
+
+A causa que esta seção supunha — "regerar a matriz inteira a cada quadro" —
+**está errada**, e por três ordens de grandeza. `test/bench.qml` mede cada parte
+do quadro dentro do motor que importa, o V4, com o Canvas de verdade:
+
+| parte | por quadro |
+|---|---|
+| gerar a matriz 70×28 (`Art.plantAscii`) | **0,42 ms** |
+| decidir a cor de cada célula (`Palette.charColor`) | 0,33 ms |
+| `ctx.reset()` + os dois `measureText` | 0,31 ms |
+| **pintar, um `fillText` por caractere** | **4,19 ms** |
+| pintar, um `fillText` por trecho contíguo de mesma cor | 1,78 ms |
+
+Gerar a matriz é 8% do custo de desenhá-la. Guardá-la entre quadros — a
+otimização que esta seção propunha — economizaria 0,42 ms de ~30.
+
+**E o desenho também não explica os 30 ms.** Tudo que roda em JavaScript soma
+~4,9 ms; os outros ~25 ms estão fora dele, na rasterização do Canvas e na subida
+da textura, que a medição por CPU da tabela acima incluía e este bench não
+alcança. Atacar o JS ataca um sexto do problema.
+
+**A otimização por trecho foi escrita, medida e revertida.** Ela derruba o
+desenho de 4,19 para 1,78 ms — 2,4 ms de ~30, ou 8%. Não foi mantida por duas
+razões: o ganho não é o que esta seção prometia, e **não consegui provar que os
+pixels são idênticos**. Numa fonte monoespaçada eles deveriam ser, mas o Canvas
+mede `M` em 8,0 px e `MMMMMMMMMM` em 84,0 — o avanço dentro de uma string não é
+a largura do glifo solto, e quem posiciona passa a ser o Qt. Some a isso
+ligaduras, que fundem `//` ou `==` quando os caracteres chegam juntos. A
+comparação em pixel que escrevi não ficou estável o bastante para decidir, e as
+64 fixtures não veem esse tipo de diferença: elas são texto. Enquanto não houver
+essa prova, a arte não muda.
+
+**O caminho que sobra**, se um dia valer a pena, é o Canvas inteiro — repintar só
+o que mudou, ou trocar a estratégia de render — e não o JavaScript.
 
 **Não é urgente.** Não vaza, não cresce, e só existe enquanto alguém olha.
 

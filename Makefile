@@ -11,6 +11,7 @@
 #   make hostile   joga FIFO, symlink, hardlink e save gigante contra o save.py
 #   make refused   prova que uma gravacao recusada aparece na sala, e nao some
 #   make glyphs    confere os sete icones da barra contra a fonte instalada
+#   make bench     mede onde vai o tempo de um quadro, parte por parte
 #   make test      check + diff + verify
 #
 # GANJA_TUI aponta para o clone do repo de origem. Nada aqui roda em tempo de
@@ -19,7 +20,7 @@
 GANJA_TUI ?= $(HOME)/Projetos/Ganja-TUI
 STRAINS_JSON := $(GANJA_TUI)/strains.json
 
-.PHONY: strains check frames diff verify state refused hostile glyphs test dev dev-off dev-status
+.PHONY: strains check frames diff verify state refused hostile glyphs bench test dev dev-off dev-status
 
 Strains.js: $(STRAINS_JSON) Makefile
 	@printf '.pragma library\n\n' > $@
@@ -89,6 +90,13 @@ verify:
 
 state:
 	@test/stage.sh state.qml
+
+# Onde vai o tempo de um quadro. Nao e teste - nao passa nem reprova: imprime a
+# conta. Existe porque a secao 12 do SPEC atribuia os ~30 ms a "regerar a matriz
+# a cada quadro", e a medicao mostrou que gerar custa 0,42 ms contra 4,19 de
+# desenhar. Abre uma janela por alguns segundos.
+bench:
+	@test/stage.sh bench.qml
 
 # A gravacao recusada pelo save.py tem que APARECER: este roda o plugin de
 # verdade com o ~/.local/share do HOME temporario gravavel pelo grupo, que e o

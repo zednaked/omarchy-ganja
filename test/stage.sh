@@ -47,4 +47,4 @@ cp "$raiz/test/$arquivo" "$palco/plugin/"
 
 HOME="$palco/home" QT_FORCE_STDERR_LOGGING=1 \
   qs -p "$palco/plugin/$arquivo" 2>&1 \
-  | grep -E "OK:|FALHOU|DIFERE|FIXTURE" || true
+  | grep -E "OK:|FALHOU|DIFERE|FIXTURE|ms$|^  [A-E] |media de|hoje |trecho" || true

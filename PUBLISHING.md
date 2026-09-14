@@ -33,7 +33,8 @@ duas checagens — senão o site marca "Update unverified", que é o snapshot
 verificado ficar para trás do código observado.
 
 O que continua em aberto e não depende deles: o `diff` contra o Ganja-TUI de
-verdade (precisa de `cargo`) e a otimização dos 30 ms por quadro. Seção 6.
+verdade (feito em 14/09) e a otimização dos 30 ms por quadro, cuja causa foi
+medida no mesmo dia e não era a que estava escrita. Seção 6.
 
 ---
 
@@ -368,10 +369,13 @@ Rust ganhou `examples/dump_frames.rs`, e os 64 frames saíram idênticos,
 caractere a caractere. Os dois READMEs deixaram de dizer "declarada, não
 comprovada". Ver `test/README.md`.
 
-**A otimização do quadro.** 30 ms de CPU para desenhar 70×28 caracteres é caro
-em uma ordem de grandeza; a causa provável é regerar a matriz inteira a cada
-quadro. As 64 fixtures são o que garante que a otimização não muda a planta.
-Não é urgente: só existe enquanto alguém olha, e agora o `p` zera até isso.
+**A otimização do quadro.** 30 ms de CPU para desenhar 70×28 caracteres é caro em
+uma ordem de grandeza — mas a causa que estava escrita aqui, "regerar a matriz
+inteira a cada quadro", **foi medida em 14/09 e está errada**: gerar custa 0,42 ms,
+pintar caractere a caractere custa 4,19, e o JavaScript inteiro soma ~4,9 dos
+~30 ms. O resto está na rasterização do Canvas. A medição por parte está no
+`test/bench.qml` e o raciocínio na seção 12 do SPEC. Não é urgente: só existe
+enquanto alguém olha, e o `p` zera até isso.
 
 ## 7. Coisas que **não** são exigidas, e por que ficam como estão
 
