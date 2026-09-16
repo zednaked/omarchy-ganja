@@ -22,12 +22,34 @@ plugins LV2, CLAP e VST3 em C++20/Qt6 sobre JACK e PipeWire.*
 
 ## Instalar
 
+Pela [listagem no marketplace](https://plugins.omarchy.org/plugin.html?id=zed.ganja),
+ou direto do git:
+
 ```sh
-omarchy-guest install        # copia plugins/ para ~/.config/omarchy/plugins/
+omarchy plugin add https://github.com/zednaked/omarchy-ganja --enable
+omarchy-restart-shell
 ```
 
-Depois, uma linha em `~/.config/omarchy/shell.json`, dentro de
-`bar.layout.left`, `center` ou `right`:
+O restart não é cerimônia: o Omarchy sobe o Quickshell com
+`QS_DISABLE_FILE_WATCHER=1` de propósito, e nem `rescanPlugins` nem
+`Qt.clearComponentCache()` trocam um QML de plugin já compilado. Enquanto não
+reiniciar, o plugin recém-copiado não aparece — e não dá erro nenhum, o que é
+pior.
+
+A planta nasce sozinha na primeira carga. O save fica em
+`~/.local/share/zed.ganja/save.json`.
+
+**Vindo da versão que morava dentro do `omarchy-guest`?** O save antigo
+(`~/.local/share/omarchy-guest/ganja/save.json`) é lido uma vez, na primeira
+carga, e migrado para o caminho novo — com a planta, as colheitas, o idioma e
+tudo o mais. O arquivo antigo fica intacto: voltar também é só voltar.
+
+O caminho mudou porque um plugin publicado por conta própria guardando dados com
+o nome de outro projeto no caminho está errado; mudar sem levar a planta de quem
+já tinha uma seria pior.
+
+Para pôr o widget na barra à mão, uma linha em `~/.config/omarchy/shell.json`,
+dentro de `bar.layout.left`, `center` ou `right`:
 
 ```jsonc
 { "id": "zed.ganja" }
@@ -40,28 +62,8 @@ omarchy-shell shell putBarWidget zed.ganja '{"section":"right"}'
 ```
 
 O plugin só carrega se o id aparecer no `shell.json` — é assim que o
-`PluginRegistry` decide o que está habilitado. Depois, **reinicie o shell**:
-
-```sh
-omarchy-restart-shell
-```
-
-Isso não é opcional nem é cerimônia: o Omarchy sobe o Quickshell com
-`QS_DISABLE_FILE_WATCHER=1` de propósito, e nem `rescanPlugins` nem
-`Qt.clearComponentCache()` trocam um QML de plugin já compilado. Enquanto não
-reiniciar, uma edição no plugin não aparece — e não dá erro nenhum, o que é
-pior. A planta nasce sozinha na primeira carga.
-
-O save fica em `~/.local/share/zed.ganja/save.json`.
-
-**Vindo da versão que morava dentro do `omarchy-guest`?** O save antigo
-(`~/.local/share/omarchy-guest/ganja/save.json`) é lido uma vez, na primeira
-carga, e migrado para o caminho novo — com a planta, as colheitas, o idioma e
-tudo o mais. O arquivo antigo fica intacto: voltar também é só voltar.
-
-O caminho mudou porque um plugin publicado por conta própria guardando dados com
-o nome de outro projeto no caminho está errado; mudar sem levar a planta de quem
-já tinha uma seria pior.
+`PluginRegistry` decide o que está habilitado, e é isso que o `--enable` faz por
+você.
 
 ---
 
@@ -82,6 +84,12 @@ planta fora". Para apagar ela também:
 ```sh
 rm -rf ~/.local/share/zed.ganja
 ```
+
+**Requisitos:** Omarchy com `omarchy-shell` (plugin schemaVersion 1), `python3`
+(para o `save.py`, o ajudante de disco — ver *O save, e o TUI*) e uma Nerd Font
+na barra: os glifos de estágio vêm do conjunto Material Design (`md-sprout`,
+`md-cannabis`, …). `make glyphs` confere os oito glifos contra a fonte que
+está instalada na máquina de verdade.
 
 ---
 

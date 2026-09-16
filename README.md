@@ -25,7 +25,8 @@ C++20/Qt6 plugin host for LV2, CLAP and VST3 over JACK and PipeWire.*
 
 ## Install
 
-From the marketplace listing, or straight from git:
+From the [marketplace listing](https://plugins.omarchy.org/plugin.html?id=zed.ganja),
+or straight from git:
 
 ```sh
 omarchy plugin add https://github.com/zednaked/omarchy-ganja --enable
