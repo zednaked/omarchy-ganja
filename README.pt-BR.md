@@ -15,6 +15,9 @@ simulação**; clique do meio rega.
 Interface em **português ou inglês**, com a tecla `l` — e o padrão vem do locale
 da máquina.
 
+*Do mesmo autor: [Nirbija](https://github.com/zednaked/Nirbija), um host de
+plugins LV2, CLAP e VST3 em C++20/Qt6 sobre JACK e PipeWire.*
+
 ---
 
 ## Instalar
@@ -556,3 +559,8 @@ make strains GANJA_TUI=~/Projetos/Ganja-TUI
 ---
 
 MIT, como o Ganja-TUI. A planta é do ZeD; a barra é do Omarchy.
+
+Das mesmas mãos: **[Nirbija](https://github.com/zednaked/Nirbija)** — um host de
+LV2/CLAP/VST3 em C++20/Qt6 sobre JACK e PipeWire. Se te agradou que este widget
+custe um Timer, aquele é a mesma pergunta feita sobre áudio.
+Mais em [github.com/zednaked](https://github.com/zednaked).

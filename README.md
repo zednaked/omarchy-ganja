@@ -18,6 +18,9 @@ locale.
 > 🇧🇷 A versão em português deste documento, mais longa e com os porquês, está em
 > [README.pt-BR.md](README.pt-BR.md).
 
+*Also by the same author: [Nirbija](https://github.com/zednaked/Nirbija), a
+C++20/Qt6 plugin host for LV2, CLAP and VST3 over JACK and PipeWire.*
+
 ---
 
 ## Install
@@ -479,3 +482,8 @@ make strains GANJA_TUI=~/Projetos/Ganja-TUI
 ---
 
 MIT, like Ganja-TUI. The plant is ZeD's; the bar is Omarchy's.
+
+Same hands: **[Nirbija](https://github.com/zednaked/Nirbija)** — an LV2/CLAP/VST3
+host in C++20/Qt6 over JACK and PipeWire. If you liked that this widget costs one
+timer, that is the same question asked about audio.
+More at [github.com/zednaked](https://github.com/zednaked).
